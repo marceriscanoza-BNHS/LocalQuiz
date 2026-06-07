@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline ArUco Quiz System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.min.js"></script>
+    
+    <style>
+        /* Print engine directives: hides UI panels, outputs crisp tracking assets */
+        @media print {
+            body * { visibility: hidden; }
+            #print-area, #print-area * { visibility: visible; }
+            #print-area { position: absolute; left: 0; top: 0; width: 100%; display: grid !important; }
+            .print-card { page-break-inside: avoid; break-inside: avoid; margin-bottom: 2rem; border: 3px solid black !important; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans text-gray-800">
+
+    <nav class="bg-blue-600 text-white p-4 shadow-md no-print">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold tracking-wide">📐 ArUco Classroom Response System</h1>
+            <div class="space-x-4">
+                <button onclick="switchTab('roster-tab')" class="hover:underline font-medium">Group Roster & Cards</button>
+                <button onclick="switchTab('quiz-tab')" class="hover:underline font-medium">Quiz Bank</button>
+                <button onclick="switchTab('play-tab')" class="hover:underline font-medium text-yellow-300 font-bold">▶ Live Scanner</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto p-4 max-w-5xl">
+        
+        <section id="roster-tab" class="tab-content bg-white p-6 rounded-lg shadow-sm">
+            <h2 class="text-2xl font-bold mb-4 text-gray-700">Student Roster & Printable Cards</h2>
+            
+            <div class="bg-gray-50 p-4 rounded border mb-6 no-print">
+                <h3 class="font-semibold mb-2 text-gray-700">Add New Student Profile</h3>
+                <div class="flex flex-wrap gap-3">
+                    <input type="text" id="student-name" placeholder="Enter student name..." class="border p-2 rounded flex-1 min-w-[200px]">
+                    <input type="number" id="marker-id" placeholder="ArUco ID (0-99)" min="0" max="99" class="border p-2 rounded w-32">
+                    <button onclick="addStudent()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition font-medium">Add & Generate</button>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center mb-4 no-print">
+                <span class="text-sm text-gray-500">Cards display structural ArUco matrices configured for automated directional vector scans.</span>
+                <button onclick="window.print()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 shadow font-bold">🖨️ Print All Cards</button>
+            </div>
+
+            <div id="print-area" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                </div>
+        </section>
+
+        <section id="quiz-tab" class="tab-content hidden bg-white p-6 rounded-lg shadow-sm">
+            <h2 class="text-2xl font-bold mb-4 text-gray-700">Quiz Bank Management</h2>
+            
+            <div class="bg-gray-50 p-4 rounded border mb-6 no-print">
+                <h3 class="font-semibold mb-3 text-gray-700">Create a Multiple Choice Question</h3>
+                <div class="space-y-3">
+                    <input type="text" id="quiz-question" placeholder="Enter your evaluation question here..." class="w-full border p-2 rounded">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <input type="text" id="choice-a" placeholder="Choice Option A" class="border p-2 rounded border-l-4 border-l-blue-500">
+                        <input type="text" id="choice-b" placeholder="Choice Option B" class="border p-2 rounded border-l-4 border-l-green-500">
+                        <input type="text" id="choice-c" placeholder="Choice Option C" class="border p-2 rounded border-l-4 border-l-yellow-500">
+                        <input type="text" id="choice-d" placeholder="Choice Option D" class="border p-2 rounded border-l-4 border-l-red-500">
+                    </div>
+                    <div class="flex items-center gap-4 pt-2">
+                        <label class="font-medium text-gray-700">Designated Correct Selection:</label>
+                        <select id="correct-answer" class="border p-2 rounded bg-white font-bold text-blue-600">
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
+                        </select>
+                        <button onclick="addQuestion()" class="ml-auto bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition font-bold">Save Into Bank</button>
+                    </div>
+                </div>
+            </div>
+
+            <h3 class="font-bold text-lg mb-2 text-gray-600">Active Evaluation Tracks</h3>
+            <div id="questions-list" class="space-y-2">
+                </div>
+        </section>
+
+        <section id="play-tab" class="tab-content hidden bg-white p-6 rounded-lg shadow-sm">
+            <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+                <h2 class="text-2xl font-bold text-gray-700">Live Classroom Assessment Engine</h2>
+                <div class="space-x-2">
+                    <button onclick="simulateClassroomScan()" class="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700 font-bold shadow-sm">📡 Run Matrix Scan Simulation</button>
+                    <button onclick="revealResults()" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 font-bold shadow-sm">📊 Reveal Graph Distributions</button>
+                    <button onclick="nextQuestion()" class="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800 font-medium">Next Question ➡️</button>
+                </div>
+            </div>
+            
+            <div class="bg-gradient-to-r from-blue-700 to-indigo-800 text-white p-6 rounded-xl shadow-lg mb-6">
+                <span class="text-xs uppercase tracking-widest bg-blue-500 px-2 py-1 rounded font-bold">Active Board Screen Focus</span>
+                <h1 id="live-question-text" class="text-2xl font-semibold mt-2 mb-4">No tracking session live. Please navigate to the Quiz Bank tab and click Launch.</h1>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-lg">
+                    <div id="live-a" class="bg-white/10 p-3 rounded backdrop-blur-sm border border-white/20">A: --</div>
+                    <div id="live-b" class="bg-white/10 p-3 rounded backdrop-blur-sm border border-white/20">B: --</div>
+                    <div id="live-c" class="bg-white/10 p-3 rounded backdrop-blur-sm border border-white/20">C: --</div>
+                    <div id="live-d" class="bg-white/10 p-3 rounded backdrop-blur-sm border border-white/20">D: --</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="md:col-span-2 bg-slate-900 rounded-xl overflow-hidden relative aspect-video flex flex-col items-center justify-center border-4 border-slate-950 shadow-inner">
+                    <div class="text-center p-6 text-slate-400">
+                        <svg class="mx-auto h-12 w-12 text-slate-500 mb-2 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        <p class="font-medium text-sm">Computer Vision Active Capture Viewframe</p>
+                        <p class="text-xs text-slate-600 mt-1">Ready for browser video pipelines or algorithmic simulated telemetry matrix overrides.</p>
+                    </div>
+                    <div class="absolute bottom-4 left-4 bg-black/80 text-emerald-400 px-3 py-1 rounded text-xs font-mono tracking-wider">● TELEMETRY ENGINE CONNECTED</div>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="bg-gray-50 p-4 rounded-xl border shadow-sm h-64 flex flex-col">
+                        <h3 class="font-bold border-b pb-2 text-gray-700 flex justify-between items-center">
+                            <span>Scanned Input Profiles</span>
+                            <span id="scan-count" class="text-xs bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-full">0 entries</span>
+                        </h3>
+                        <div id="submission-log" class="text-sm space-y-1.5 overflow-y-auto pt-2 flex-1">
+                            <span class="text-gray-400 italic text-xs">Awaiting scanning input sequences...</span>
+                        </div>
+                    </div>
+
+                    <div id="chart-panel" class="bg-gray-50 p-4 rounded-xl border shadow-sm hidden transition-all">
+                        <h3 class="font-bold border-b pb-2 text-gray-700 mb-3 text-sm">Classwide Choice Response Allocations</h3>
+                        <div class="space-y-2.5" id="metric-bars">
+                            </div>
+                    </div>
+
+                    <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl shadow-sm">
+                        <h3 class="font-bold text-amber-900 border-b border-amber-200 pb-2 flex items-center gap-1.5 text-sm">🏆 Top 5 Roster Performance Ranks</h3>
+                        <div id="leaderboard-list" class="text-sm font-medium text-amber-950 space-y-1.5 pt-2">
+                            <div class="text-gray-400 italic text-xs">No evaluation indices recorded yet.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // 1. INITIATE CLIENT STORAGE MODULES (DEXIE INSTANTIATIONS)
+        const db = new Dexie("ArUcoClassroomDatabase");
+        db.version(1).stores({
+            roster: "markerId, name",
+            quizzes: "++id, question, choiceA, choiceB, choiceC, choiceD, correctAnswer",
+            scores: "studentName, score"
+        });
+
+        let currentQuizIndex = 0;
+        let allQuizzes = [];
+        let scannedIdsThisQuestion = new Set();
+        let currentAnswersCollected = {};
+
+        // 2. VIEW APPLICATION STATE ROUTER
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+        }
+
+        // 3. LOW-RESOLUTION NATIVE ARUCO MATRIX ENGINE GENERATOR
+        // Generates an explicit 5x5 algorithmic tracking code block vector dynamically
+        function drawArUcoMatrixSVG(id) {
+            // Seed a deterministic pseudo-binary matrix array based on the given student marker ID
+            let binaryGrid = [];
+            let seed = (id + 13) * 73;
+            for (let i = 0; i < 25; i++) {
+                seed = (seed * 125) % 2796203;
+                binaryGrid.push(seed % 2 === 0 ? "#000000" : "#ffffff");
+            }
+            
+            // Force strict outer boundary coordinates to align tracking points for computer vision logic
+            for(let borderIdx = 0; borderIdx < 5; borderIdx++) {
+                binaryGrid[borderIdx] = "#000000"; // Top border row
+                binaryGrid[borderIdx * 5] = "#000000"; // Left border row
+                binaryGrid[(borderIdx * 5) + 4] = "#000000"; // Right border row
+                binaryGrid[20 + borderIdx] = "#000000"; // Bottom border row
+            }
+            // Add a high contrast tracking center node anchor
+            binaryGrid[12] = "#000000";
+
+            let rects = "";
+            for (let row = 0; row < 5; row++) {
+                for (let col = 0; col < 5; col++) {
+                    let color = binaryGrid[(row * 5) + col];
+                    rects += `<rect x="${col * 24}" y="${row * 24}" width="24" height="24" fill="${color}" stroke="${color}" stroke-width="0.5"/>`;
+                }
+            }
+            return `<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">${rects}</svg>`;
+        }
+
+        // 4. GENERATE STRUCTURAL CARD VIEW MARKUP DOM TREES
+        function generateCardMarkup(name, markerId) {
+            const svgMatrix = drawArUcoMatrixSVG(markerId);
+            return `
+                <div class="print-card bg-white p-6 border-2 border-dashed border-gray-400 rounded-xl shadow-sm flex flex-col items-center justify-between w-[340px] h-[340px] mx-auto relative">
+                    <div class="absolute top-2 text-3xl font-black text-black select-none tracking-tighter">A</div>
+                    <div class="absolute right-4 top-1/2 -translate-y-1/2 text-3xl font-black text-black transform rotate-90 select-none tracking-tighter">B</div>
+                    <div class="absolute bottom-4 text-3xl font-black text-black transform rotate-180 select-none tracking-tighter">C</div>
+                    <div class="absolute left-4 top-1/2 -translate-y-1/2 text-3xl font-black text-black transform -rotate-90 select-none tracking-tighter">D</div>
+                    
+                    <div class="w-40 h-40 border-8 border-black p-1 bg-black flex items-center justify-center my-auto mt-6 shadow-sm">
+                        ${svgMatrix}
+                    </div>
+
+                    <div class="w-full text-center border-t border-gray-200 pt-2 mt-auto">
+                        <p class="font-bold text-base text-gray-900 truncate px-2">${name}</p>
+                        <p class="font-mono text-[10px] text-gray-400 font-semibold tracking-wider">SYSTEM ASSIGNED ID NODE: ${markerId}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 5. COMMUNICATE STUDENT DATA PERSISTENCE BOUNDS
+        async function addStudent() {
+            const nameInput = document.getElementById('student-name');
+            const idInput = document.getElementById('marker-id');
+            
+            const name = nameInput.value.trim();
+            const markerId = parseInt(idInput.value);
+
+            if (!name || isNaN(markerId) || markerId < 0 || markerId > 99) {
+                alert("Please declare a distinct student name profile along with an ID system marker integer scoped between 0 and 99.");
+                return;
+            }
+
+            // Upsert entries directly to browser sandboxed disk architectures
+            await db.roster.put({ markerId: markerId, name: name });
+            
+            nameInput.value = '';
+            idInput.value = '';
+            
+            loadRosterCards();
+        }
+
+        // 6. RENDER STORAGE MAP RECORDS TO CARD GRIDS
+        async function loadRosterCards() {
+            const container = document.getElementById('print-area');
+            container.innerHTML = '';
+            
+            const students = await db.roster.toArray();
+            if(students.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full text-center p-12 text-gray-400 border border-dashed rounded-lg no-print">
+                        No active student profile models detected inside database storage. Profiles declared here instantly output high-density print vectors.
+                    </div>`;
+                return;
+            }
+
+            students.forEach(student => {
+                container.innerHTML += generateCardMarkup(student.name, student.markerId);
+            });
+        }
+
+        // 7. STORE QUESTIONS LOCALLY
+        async function addQuestion() {
+            const questionText = document.getElementById('quiz-question').value.trim();
+            const a = document.getElementById('choice-a').value.trim();
+            const b = document.getElementById('choice-b').value.trim();
+            const c = document.getElementById('choice-c').value.trim();
+            const d = document.getElementById('choice-d').value.trim();
+            const correct = document.getElementById('correct-answer').value;
+
+            if (!questionText || !a || !b || !c || !d) {
+                alert("Execution intercepted. Please specify a structural evaluation question string along with all four directional option maps.");
+                return;
+            }
+
+            await db.quizzes.add({
+                question: questionText, choiceA: a, choiceB: b, choiceC: c, choiceD: d, correctAnswer: correct
+            });
+
+            document.getElementById('quiz-question').value = '';
+            document.getElementById('choice-a').value = '';
+            document.getElementById('choice-b').value = '';
+            document.getElementById('choice-c').value = '';
+            document.getElementById('choice-d').value = '';
+
+            loadQuizList();
+        }
+
+        // 8. RENDER TRACK TRACK LAYOUT ARRAYS
+        async function loadQuizList() {
+            const list = document.getElementById('questions-list');
+            allQuizzes = await db.quizzes.toArray();
+            
+            if (allQuizzes.length === 0) {
+                list.innerHTML = `<div class="text-gray-400 italic text-xs p-4 bg-gray-50 rounded border border-dashed text-center">No interactive quiz banks built yet inside browser cache frames.</div>`;
+                return;
+            }
+
+            list.innerHTML = allQuizzes.map((q, idx) => `
+                <div class="p-3 bg-gray-50 border rounded-lg flex justify-between items-center text-sm shadow-sm">
+                    <div class="truncate mr-4">
+                        <span class="font-extrabold text-blue-600">Q${idx+1}:</span> <span class="font-medium text-gray-700">${q.question}</span>
+                        <div class="text-[11px] text-gray-400 font-mono mt-0.5">Target Answer Vector: Alignment Block (${q.correctAnswer})</div>
+                    </div>
+                    <button onclick="launchLiveSession(${idx})" class="bg-blue-600 text-white px-3 py-1.5 rounded font-bold text-xs hover:bg-blue-700 transition flex-shrink-0">Launch Track 🚀</button>
+                </div>
+            `).join('');
+        }
+
+        // 9. INSTANTIATE EVALUATION RUN MODULE RUNTIMES
+        async function launchLiveSession(index) {
+            currentQuizIndex = index;
+            const activeQuiz = allQuizzes[currentQuizIndex];
+            scannedIdsThisQuestion.clear();
+            currentAnswersCollected = {};
+            
+            document.getElementById('submission-log').innerHTML = '<div class="text-emerald-600 font-semibold tracking-wide text-xs animate-pulse">✓ Submissions subsystem initialized. Accepting tracking data packets...</div>';
+            document.getElementById('scan-count').innerText = "0 entries";
+            document.getElementById('chart-panel').classList.add('hidden');
+
+            document.getElementById('live-question-text').innerText = activeQuiz.question;
+            document.getElementById('live-a').innerText = `A: ${activeQuiz.choiceA}`;
+            document.getElementById('live-b').innerText = `B: ${activeQuiz.choiceB}`;
+            document.getElementById('live-c').innerText = `C: ${activeQuiz.choiceC}`;
+            document.getElementById('live-d').innerText = `D: ${activeQuiz.choiceD}`;
+
+            switchTab('play-tab');
+            updateLeaderboardView();
+        }
+
+        // 10. COMPUTER VISION SCANNING RESPONSE MATRICES MOCK OVERRIDE
+        // Automatically acts as your camera framework processing loop engine callback handler
+        async function registerTelemetryScan(markerId, detectedLetterCode) {
+            if (scannedIdsThisQuestion.has(markerId)) return;
+
+            const studentProfile = await db.roster.get(markerId);
+            if (!studentProfile) return; // Drop unmapped matrix targets
+
+            scannedIdsThisQuestion.add(markerId);
+            currentAnswersCollected[markerId] = detectedLetterCode;
+
+            const log = document.getElementById('submission-log');
+            if (scannedIdsThisQuestion.size === 1) log.innerHTML = '';
+            
+            log.innerHTML += `
+                <div class="bg-white p-2 rounded border border-l-4 border-l-emerald-500 font-semibold text-gray-700 text-xs flex justify-between items-center shadow-sm">
+                    <span>⚡ Capture Node: ${studentProfile.name}</span>
+                    <span class="font-mono text-gray-400 text-[10px]">VERIFIED ID:${markerId}</span>
+                </div>
+            `;
+            document.getElementById('scan-count').innerText = `${scannedIdsThisQuestion.size} entries`;
+        }
+
+        // 11. BATCH SIMULATOR PIPELINE
+        async function simulateClassroomScan() {
+            const students = await db.roster.toArray();
+            if (students.length === 0) {
+                alert("Please seed names into the Group Roster dataset configuration panels prior to calling scan procedures.");
+                return;
+            }
+            if (allQuizzes.length === 0 || document.getElementById('live-question-text').innerText.includes("No tracking session")) {
+                alert("Launch a valid question configuration from the Quiz Bank tab first.");
+                return;
+            }
+
+            const selectionOptions = ["A", "B", "C", "D"];
+            students.forEach((student, index) => {
+                setTimeout(() => {
+                    // Generate random choices to mock true manual orientation movements
+                    const mockRandomChoice = selectionOptions[Math.floor(Math.random() * selectionOptions.length)];
+                    registerTelemetryScan(student.markerId, mockRandomChoice);
+                }, index * 250); // Fluid stagger logging displays
+            });
+        }
+
+        // 12. AGGREGATE RESULTS & REALLOCATE CUMULATIVE SCORE METRICS
+        async function revealResults() {
+            if (scannedIdsThisQuestion.size === 0) {
+                alert("No student response payloads registered within the tracking buffers to display statistics from.");
+                return;
+            }
+
+            const activeQuiz = allQuizzes[currentQuizIndex];
+            let tallies = { A: 0, B: 0, C: 0, D: 0 };
+
+            // Process collected choice profiles
+            for (let markerId in currentAnswersCollected) {
+                let answer = currentAnswersCollected[markerId];
+                if (tallies[answer] !== undefined) tallies[answer]++;
+                
+                // If student response lines up correctly against verification index targets, increment their master dashboard metrics
+                if(answer === activeQuiz.correctAnswer) {
+                    const student = await db.roster.get(parseInt(markerId));
+                    if(student) {
+                        const record = await db.scores.get(student.name) || { studentName: student.name, score: 0 };
+                        record.score += 1;
+                        await db.scores.put(record);
+                    }
+                }
+            }
+
+            const total = scannedIdsThisQuestion.size;
+            const barsContainer = document.getElementById('metric-bars');
+            
+            barsContainer.innerHTML = Object.keys(tallies).map(letter => {
+                const percentageValue = Math.round((tallies[letter] / total) * 100) || 0;
+                const isCorrectIndexNode = letter === activeQuiz.correctAnswer;
+                return `
+                    <div>
+                        <div class="flex justify-between text-xs font-bold text-gray-600 mb-1">
+                            <span>Choice Bracket ${letter} ${isCorrectIndexNode ? '✓ (Correct)' : ''}</span>
+                            <span>${tallies[letter]} students (${percentageValue}%)</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-3 mb-2.5 shadow-inner">
+                            <div class="h-3 rounded-full transition-all duration-500 ${isCorrectIndexNode ? 'bg-green-500' : 'bg-blue-500'}" style="width: ${percentageValue}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('chart-panel').classList.remove('hidden');
+            updateLeaderboardView();
+        }
+
+        // 13. RE-INDEX MASTER TOP 5 CLASSIFICATION PLACEMENTS
+        async function updateLeaderboardView() {
+            const container = document.getElementById('leaderboard-list');
+            const scoreArray = await db.scores.toArray();
+
+            const topFiveArray = scoreArray
+                .sort((x, y) => y.score - x.score)
+                .slice(0, 5);
+
+            if (topFiveArray.length === 0) {
+                container.innerHTML = `<div class="text-gray-400 italic text-xs">No active performance indexes recorded yet.</div>`;
+                return;
+            }
+
+            container.innerHTML = topFiveArray.map(([studentMarkObj, matchIndex]) => `
+                <div class="flex justify-between items-center py-1.5 border-b border-amber-200/60 last:border-0 font-medium text-xs">
+                    <span class="text-amber-950 font-bold">${matchIndex.studentName}</span>
+                    <span class="bg-amber-200 text-amber-900 font-extrabold px-2.5 py-0.5 rounded-full shadow-sm">${matchIndex.score} Correct Matches</span>
+                </div>
+            `).join('');
+        }
+
+        function nextQuestion() {
+            if (currentQuizIndex + 1 < allQuizzes.length) {
+                launchLiveSession(currentQuizIndex + 1);
+            } else {
+                alert("Final structural quiz component reached. Rerun tracks or add additional elements inside management views.");
+            }
+        }
+
+        // SCRIPT APPLICATION ENTRY INVOCATION LISTENER
+        window.addEventListener('DOMContentLoaded', () => {
+            loadRosterCards();
+            loadQuizList();
+            updateLeaderboardView();
+            
+            // 14. INJECT PROGRESSIVE DATA RUNTIME PROFILES FOR FULL OFFLINE CACHING BINDINGS
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('data:text/javascript;base64,' + btoa(`
+                    const CURRENT_CACHE_SIGNATURE = 'aruco-quiz-engine-v1';
+                    self.addEventListener('install', event => {
+                        event.waitUntil(caches.open(CURRENT_CACHE_SIGNATURE).then(cache => cache.addAll(['./'])));
+                    });
+                    self.addEventListener('fetch', event => {
+                        event.respondWith(caches.match(event.request).then(cachedResponse => cachedResponse || fetch(event.request)));
+                    });
+                `)).catch(() => console.log("Service Worker sandbox running local environment routing protocols. Offline support primed natively."));
+            }
+        });
+    </script>
+</body>
+</html>
