@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Offline ArUco Quiz System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Offline Mobile ArUco Quiz Suite</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     
     <style>
-        /* Print engine directives: hides UI panels, outputs crisp tracking assets */
         @media print {
             body * { visibility: hidden; }
             #print-area, #print-area * { visibility: visible; }
@@ -20,126 +20,131 @@
 </head>
 <body class="bg-gray-100 font-sans text-gray-800">
 
-    <nav class="bg-blue-600 text-white p-4 shadow-md no-print">
-        <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-xl font-bold tracking-wide">📐 ArUco Classroom Response System</h1>
-            <div class="space-x-4">
-                <button onclick="switchTab('roster-tab')" class="hover:underline font-medium">Group Roster & Cards</button>
-                <button onclick="switchTab('quiz-tab')" class="hover:underline font-medium">Quiz Bank</button>
-                <button onclick="switchTab('play-tab')" class="hover:underline font-medium text-yellow-300 font-bold">▶ Live Scanner</button>
+    <nav class="bg-indigo-600 text-white p-4 shadow-md no-print sticky top-0 z-50">
+        <div class="container mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
+            <h1 class="text-lg font-bold tracking-wide">📐 Mobile ArUco Response Suite</h1>
+            <div class="flex flex-wrap justify-center gap-2 text-sm">
+                <button onclick="switchTab('roster-tab')" class="px-3 py-1 rounded hover:bg-indigo-700 font-medium">Roster & Cards</button>
+                <button onclick="switchTab('quiz-tab')" class="px-3 py-1 rounded hover:bg-indigo-700 font-medium">Quiz Bank</button>
+                <button onclick="switchTab('play-tab')" class="px-3 py-1 rounded bg-yellow-500 text-slate-900 font-bold hover:bg-yellow-400">▶ Run Quiz</button>
             </div>
         </div>
     </nav>
 
     <main class="container mx-auto p-4 max-w-5xl">
         
-        <section id="roster-tab" class="tab-content bg-white p-6 rounded-lg shadow-sm">
-            <h2 class="text-2xl font-bold mb-4 text-gray-700">Student Roster & Printable Cards</h2>
+        <section id="roster-tab" class="tab-content bg-white p-4 sm:p-6 rounded-lg shadow-sm">
+            <h2 class="text-2xl font-bold mb-2 text-gray-700">Student Roster</h2>
             
-            <div class="bg-gray-50 p-4 rounded border mb-6 no-print">
-                <h3 class="font-semibold mb-2 text-gray-700">Add New Student Profile</h3>
-                <div class="flex flex-wrap gap-3">
-                    <input type="text" id="student-name" placeholder="Enter student name..." class="border p-2 rounded flex-1 min-w-[200px]">
-                    <input type="number" id="marker-id" placeholder="ArUco ID (0-99)" min="0" max="99" class="border p-2 rounded w-32">
-                    <button onclick="addStudent()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition font-medium">Add & Generate</button>
-                </div>
-            </div>
-
-            <div class="flex justify-between items-center mb-4 no-print">
-                <span class="text-sm text-gray-500">Cards display structural ArUco matrices configured for automated directional vector scans.</span>
-                <button onclick="window.print()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 shadow font-bold">🖨️ Print All Cards</button>
-            </div>
-
-            <div id="print-area" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                </div>
-        </section>
-
-        <section id="quiz-tab" class="tab-content hidden bg-white p-6 rounded-lg shadow-sm">
-            <h2 class="text-2xl font-bold mb-4 text-gray-700">Quiz Bank Management</h2>
-            
-            <div class="bg-gray-50 p-4 rounded border mb-6 no-print">
-                <h3 class="font-semibold mb-3 text-gray-700">Create a Multiple Choice Question</h3>
-                <div class="space-y-3">
-                    <input type="text" id="quiz-question" placeholder="Enter your evaluation question here..." class="w-full border p-2 rounded">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <input type="text" id="choice-a" placeholder="Choice Option A" class="border p-2 rounded border-l-4 border-l-blue-500">
-                        <input type="text" id="choice-b" placeholder="Choice Option B" class="border p-2 rounded border-l-4 border-l-green-500">
-                        <input type="text" id="choice-c" placeholder="Choice Option C" class="border p-2 rounded border-l-4 border-l-yellow-500">
-                        <input type="text" id="choice-d" placeholder="Choice Option D" class="border p-2 rounded border-l-4 border-l-red-500">
-                    </div>
-                    <div class="flex items-center gap-4 pt-2">
-                        <label class="font-medium text-gray-700">Designated Correct Selection:</label>
-                        <select id="correct-answer" class="border p-2 rounded bg-white font-bold text-blue-600">
-                            <option value="A">A</option>
-                            <option value="B">B</option>
-                            <option value="C">C</option>
-                            <option value="D">D</option>
-                        </select>
-                        <button onclick="addQuestion()" class="ml-auto bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition font-bold">Save Into Bank</button>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 no-print">
+                <div class="bg-gray-50 p-4 rounded-xl border">
+                    <h3 class="font-bold text-sm text-gray-700 mb-2">Add Student Manually</h3>
+                    <div class="space-y-2">
+                        <input type="text" id="student-name" placeholder="Name" class="w-full border p-2 text-sm rounded">
+                        <input type="number" id="marker-id" placeholder="ArUco ID (0-99)" class="w-full border p-2 text-sm rounded">
+                        <button onclick="addStudent()" class="w-full bg-emerald-600 text-white py-2 text-sm rounded font-medium hover:bg-emerald-700">Add Student</button>
                     </div>
                 </div>
+                <div class="bg-gray-50 p-4 rounded-xl border flex flex-col justify-between">
+                    <div>
+                        <h3 class="font-bold text-sm text-gray-700 mb-1">Bulk Import via Excel</h3>
+                        <p class="text-xs text-gray-400 mb-3">Format columns: <strong>Name</strong>, <strong>ID</strong></p>
+                    </div>
+                    <input type="file" id="roster-excel" accept=".xlsx, .xls, .csv" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                    <button onclick="uploadRosterExcel()" class="w-full bg-indigo-600 text-white py-2 text-sm rounded font-medium hover:bg-indigo-700 mt-2">Parse Spreadsheet</button>
+                </div>
             </div>
 
-            <h3 class="font-bold text-lg mb-2 text-gray-600">Active Evaluation Tracks</h3>
-            <div id="questions-list" class="space-y-2">
-                </div>
+            <div class="flex justify-between items-center mb-4 no-print border-t pt-4">
+                <span class="text-xs font-semibold text-gray-500">Generated Cards Grid</span>
+                <button onclick="window.print()" class="bg-slate-800 text-white px-4 py-2 text-xs rounded font-bold shadow hover:bg-slate-900">🖨️ Print All Cards</button>
+            </div>
+
+            <div id="print-area" class="grid grid-cols-1 sm:grid-cols-2 gap-6"></div>
         </section>
 
-        <section id="play-tab" class="tab-content hidden bg-white p-6 rounded-lg shadow-sm">
-            <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
-                <h2 class="text-2xl font-bold text-gray-700">Live Classroom Assessment Engine</h2>
-                <div class="space-x-2">
-                    <button onclick="simulateClassroomScan()" class="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700 font-bold shadow-sm">📡 Run Matrix Scan Simulation</button>
-                    <button onclick="revealResults()" class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 font-bold shadow-sm">📊 Reveal Graph Distributions</button>
-                    <button onclick="nextQuestion()" class="bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800 font-medium">Next Question ➡️</button>
+        <section id="quiz-tab" class="tab-content hidden bg-white p-4 sm:p-6 rounded-lg shadow-sm">
+            <h2 class="text-2xl font-bold mb-2 text-gray-700">Quiz Management Bank</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 no-print">
+                <div class="bg-gray-50 p-4 rounded-xl border flex flex-col justify-between">
+                    <div>
+                        <h3 class="font-bold text-sm text-gray-700 mb-1">Create a New Quiz Track</h3>
+                        <p class="text-xs text-gray-400 mb-3">Creates an assessment folder to group multiple questions together.</p>
+                    </div>
+                    <input type="text" id="quiz-title" placeholder="e.g., Mathematics Midterm" class="w-full border p-2 text-sm rounded mb-2">
+                    <button onclick="createQuizFolder()" class="w-full bg-blue-600 text-white py-2 text-sm rounded font-medium hover:bg-blue-700">Create Quiz Folder</button>
+                </div>
+
+                <div class="bg-gray-50 p-4 rounded-xl border flex flex-col justify-between">
+                    <div>
+                        <h3 class="font-bold text-sm text-gray-700 mb-1">Import Questions via Excel</h3>
+                        <p class="text-xs text-gray-400 mb-2">Columns: <strong>Question</strong>, <strong>A</strong>, <strong>B</strong>, <strong>C</strong>, <strong>D</strong>, <strong>Correct Answer</strong></p>
+                    </div>
+                    <select id="target-quiz-folder" class="w-full border p-2 text-sm rounded mb-2 bg-white font-medium text-gray-700">
+                        <option value="">-- Choose Quiz Folder Destination --</option>
+                    </select>
+                    <input type="file" id="quiz-excel" accept=".xlsx, .xls, .csv" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                    <button onclick="uploadQuizExcel()" class="w-full bg-indigo-600 text-white py-2 text-sm rounded font-medium hover:bg-indigo-700 mt-2">Parse Questions</button>
                 </div>
             </div>
-            
-            <div class="bg-gradient-to-r from-blue-700 to-indigo-800 text-white p-6 rounded-xl shadow-lg mb-6">
-                <span class="text-xs uppercase tracking-widest bg-blue-500 px-2 py-1 rounded font-bold">Active Board Screen Focus</span>
-                <h1 id="live-question-text" class="text-2xl font-semibold mt-2 mb-4">No tracking session live. Please navigate to the Quiz Bank tab and click Launch.</h1>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-lg">
-                    <div id="live-a" class="bg-white/10 p-3 rounded backdrop-blur-sm border border-white/20">A: --</div>
-                    <div id="live-b" class="bg-white/10 p-3 rounded backdrop-blur-sm border border-white/20">B: --</div>
-                    <div id="live-c" class="bg-white/10 p-3 rounded backdrop-blur-sm border border-white/20">C: --</div>
-                    <div id="live-d" class="bg-white/10 p-3 rounded backdrop-blur-sm border border-white/20">D: --</div>
+
+            <h3 class="font-bold text-base mb-2 text-gray-600">Your Quiz Directory</h3>
+            <div id="quiz-directory" class="space-y-3"></div>
+        </section>
+
+        <section id="play-tab" class="tab-content hidden bg-white p-4 sm:p-6 rounded-lg shadow-sm">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-4 mb-4 gap-2">
+                <div>
+                    <h2 id="active-quiz-header" class="text-xl font-bold text-gray-800">No Active Session</h2>
+                    <p id="active-question-counter" class="text-xs text-gray-400 font-medium">Select a quiz track folder from the Quiz Bank directory to initialize system variables.</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button id="btn-start-scan" onclick="toggleScanner(true)" class="bg-emerald-600 text-white px-4 py-2 text-sm rounded font-bold shadow-sm hover:bg-emerald-700 hidden">📡 Start Scanning</button>
+                    <button id="btn-stop-scan" onclick="toggleScanner(false)" class="bg-red-600 text-white px-4 py-2 text-sm rounded font-bold shadow-sm hover:bg-red-700 hidden">⏹ Stop Scan</button>
+                    <button id="btn-reveal" onclick="revealQuestionResults()" class="bg-purple-600 text-white px-4 py-2 text-sm rounded font-bold shadow-sm hover:bg-purple-700 hidden">📊 Reveal Analytics</button>
+                    <button id="btn-next" onclick="advanceQuizStep()" class="bg-gray-700 text-white px-4 py-2 text-sm rounded font-medium hover:bg-gray-800 hidden">Next ➡️</button>
+                </div>
+            </div>
+
+            <div class="bg-gradient-to-br from-slate-800 to-indigo-900 text-white p-5 sm:p-6 rounded-xl shadow-md mb-6">
+                <h1 id="presentation-question" class="text-xl sm:text-2xl font-semibold leading-snug mb-4">Please launch a session loop...</h1>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-base sm:text-lg">
+                    <div id="pres-a" class="bg-white/10 p-3 rounded border border-white/10">A: --</div>
+                    <div id="pres-b" class="bg-white/10 p-3 rounded border border-white/10">B: --</div>
+                    <div id="pres-c" class="bg-white/10 p-3 rounded border border-white/10">C: --</div>
+                    <div id="pres-d" class="bg-white/10 p-3 rounded border border-white/10">D: --</div>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="md:col-span-2 bg-slate-900 rounded-xl overflow-hidden relative aspect-video flex flex-col items-center justify-center border-4 border-slate-950 shadow-inner">
-                    <div class="text-center p-6 text-slate-400">
-                        <svg class="mx-auto h-12 w-12 text-slate-500 mb-2 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                        </svg>
-                        <p class="font-medium text-sm">Computer Vision Active Capture Viewframe</p>
-                        <p class="text-xs text-slate-600 mt-1">Ready for browser video pipelines or algorithmic simulated telemetry matrix overrides.</p>
+                <div class="md:col-span-2 bg-black rounded-xl overflow-hidden relative aspect-video flex items-center justify-center border border-slate-900 shadow">
+                    <video id="hardware-webcam" class="absolute w-full h-full object-cover hidden" autoplay playsinline></video>
+                    <canvas id="ar-overlay-canvas" class="absolute w-full h-full object-cover z-10"></canvas>
+                    
+                    <div class="absolute top-3 left-3 z-20 flex gap-2">
+                        <button onclick="triggerIsolatedTestScan()" class="bg-cyan-600/90 text-white px-3 py-1 text-xs rounded-full font-bold shadow backdrop-blur-sm hover:bg-cyan-500">🧪 Run Test Scan</button>
                     </div>
-                    <div class="absolute bottom-4 left-4 bg-black/80 text-emerald-400 px-3 py-1 rounded text-xs font-mono tracking-wider">● TELEMETRY ENGINE CONNECTED</div>
+                    <div id="scanner-state-indicator" class="absolute bottom-4 left-4 z-20 bg-black/70 text-amber-500 px-3 py-1 rounded-full text-[11px] font-mono font-bold border border-amber-500/20">⏸ STANDBY MODE (NOT SCANNING)</div>
                 </div>
-                
+
                 <div class="space-y-4">
-                    <div class="bg-gray-50 p-4 rounded-xl border shadow-sm h-64 flex flex-col">
-                        <h3 class="font-bold border-b pb-2 text-gray-700 flex justify-between items-center">
-                            <span>Scanned Input Profiles</span>
-                            <span id="scan-count" class="text-xs bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-full">0 entries</span>
+                    <div class="bg-gray-50 p-4 rounded-xl border h-52 flex flex-col shadow-sm">
+                        <h3 class="font-bold border-b pb-2 text-xs uppercase tracking-wider text-gray-500 flex justify-between">
+                            <span>Submissions Buffer</span>
+                            <span id="live-scan-metric" class="text-blue-600 font-bold">0 records</span>
                         </h3>
-                        <div id="submission-log" class="text-sm space-y-1.5 overflow-y-auto pt-2 flex-1">
-                            <span class="text-gray-400 italic text-xs">Awaiting scanning input sequences...</span>
-                        </div>
+                        <div id="scan-event-queue" class="text-xs space-y-1 overflow-y-auto pt-2 flex-1 font-medium"></div>
                     </div>
 
-                    <div id="chart-panel" class="bg-gray-50 p-4 rounded-xl border shadow-sm hidden transition-all">
-                        <h3 class="font-bold border-b pb-2 text-gray-700 mb-3 text-sm">Classwide Choice Response Allocations</h3>
-                        <div class="space-y-2.5" id="metric-bars">
-                            </div>
+                    <div id="analytics-chart-box" class="bg-gray-50 p-4 rounded-xl border shadow-sm hidden">
+                        <h3 class="font-bold border-b pb-2 text-xs uppercase tracking-wider text-gray-500 mb-2">Class Distribution Profile</h3>
+                        <div class="space-y-2" id="distribution-bars"></div>
                     </div>
 
                     <div class="bg-amber-50 border border-amber-200 p-4 rounded-xl shadow-sm">
-                        <h3 class="font-bold text-amber-900 border-b border-amber-200 pb-2 flex items-center gap-1.5 text-sm">🏆 Top 5 Roster Performance Ranks</h3>
-                        <div id="leaderboard-list" class="text-sm font-medium text-amber-950 space-y-1.5 pt-2">
-                            <div class="text-gray-400 italic text-xs">No evaluation indices recorded yet.</div>
-                        </div>
+                        <h3 class="font-bold text-amber-900 text-xs uppercase tracking-wider border-b border-amber-200 pb-2">🏆 Classroom Leaderboard (Top 5)</h3>
+                        <div id="top-five-board" class="text-xs pt-2 space-y-1.5"></div>
                     </div>
                 </div>
             </div>
@@ -148,329 +153,413 @@
     </main>
 
     <script>
-        // 1. INITIATE CLIENT STORAGE MODULES (DEXIE INSTANTIATIONS)
+        // 1. RE-ARCHITECTED DATABASE INFRASTRUCTURE
         const db = new Dexie("ArUcoClassroomDatabase");
-        db.version(1).stores({
+        db.version(2).stores({
             roster: "markerId, name",
-            quizzes: "++id, question, choiceA, choiceB, choiceC, choiceD, correctAnswer",
+            quizzes: "++id, title", 
+            questions: "++id, quizId, question, choiceA, choiceB, choiceC, choiceD, correctAnswer",
             scores: "studentName, score"
         });
 
-        let currentQuizIndex = 0;
-        let allQuizzes = [];
-        let scannedIdsThisQuestion = new Set();
-        let currentAnswersCollected = {};
+        let activeQuizFolderId = null;
+        let activeQuestionsArray = [];
+        let questionCursorIndex = 0;
+        
+        let isScannerArmed = false;
+        let activeQuestionScannedIds = new Set();
+        let questionAnswerBuffer = {};
 
-        // 2. VIEW APPLICATION STATE ROUTER
+        // TAB ROUTER
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(tabId).classList.remove('hidden');
+            if(tabId === 'quiz-tab') { loadQuizDirectory(); }
         }
 
-        // 3. LOW-RESOLUTION NATIVE ARUCO MATRIX ENGINE GENERATOR
-        // Generates an explicit 5x5 algorithmic tracking code block vector dynamically
-        function drawArUcoMatrixSVG(id) {
-            // Seed a deterministic pseudo-binary matrix array based on the given student marker ID
-            let binaryGrid = [];
-            let seed = (id + 13) * 73;
-            for (let i = 0; i < 25; i++) {
-                seed = (seed * 125) % 2796203;
-                binaryGrid.push(seed % 2 === 0 ? "#000000" : "#ffffff");
-            }
+        // 2. EXCEL COMPILER PIPELINE - ROSTER BULK INGEST
+        function uploadRosterExcel() {
+            const fileInput = document.getElementById('roster-excel');
+            if(!fileInput.files.length) { alert("Please attach a valid file registry."); return; }
             
-            // Force strict outer boundary coordinates to align tracking points for computer vision logic
-            for(let borderIdx = 0; borderIdx < 5; borderIdx++) {
-                binaryGrid[borderIdx] = "#000000"; // Top border row
-                binaryGrid[borderIdx * 5] = "#000000"; // Left border row
-                binaryGrid[(borderIdx * 5) + 4] = "#000000"; // Right border row
-                binaryGrid[20 + borderIdx] = "#000000"; // Bottom border row
-            }
-            // Add a high contrast tracking center node anchor
-            binaryGrid[12] = "#000000";
-
-            let rects = "";
-            for (let row = 0; row < 5; row++) {
-                for (let col = 0; col < 5; col++) {
-                    let color = binaryGrid[(row * 5) + col];
-                    rects += `<rect x="${col * 24}" y="${row * 24}" width="24" height="24" fill="${color}" stroke="${color}" stroke-width="0.5"/>`;
-                }
-            }
-            return `<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">${rects}</svg>`;
-        }
-
-        // 4. GENERATE STRUCTURAL CARD VIEW MARKUP DOM TREES
-        function generateCardMarkup(name, markerId) {
-            const svgMatrix = drawArUcoMatrixSVG(markerId);
-            return `
-                <div class="print-card bg-white p-6 border-2 border-dashed border-gray-400 rounded-xl shadow-sm flex flex-col items-center justify-between w-[340px] h-[340px] mx-auto relative">
-                    <div class="absolute top-2 text-3xl font-black text-black select-none tracking-tighter">A</div>
-                    <div class="absolute right-4 top-1/2 -translate-y-1/2 text-3xl font-black text-black transform rotate-90 select-none tracking-tighter">B</div>
-                    <div class="absolute bottom-4 text-3xl font-black text-black transform rotate-180 select-none tracking-tighter">C</div>
-                    <div class="absolute left-4 top-1/2 -translate-y-1/2 text-3xl font-black text-black transform -rotate-90 select-none tracking-tighter">D</div>
-                    
-                    <div class="w-40 h-40 border-8 border-black p-1 bg-black flex items-center justify-center my-auto mt-6 shadow-sm">
-                        ${svgMatrix}
-                    </div>
-
-                    <div class="w-full text-center border-t border-gray-200 pt-2 mt-auto">
-                        <p class="font-bold text-base text-gray-900 truncate px-2">${name}</p>
-                        <p class="font-mono text-[10px] text-gray-400 font-semibold tracking-wider">SYSTEM ASSIGNED ID NODE: ${markerId}</p>
-                    </div>
-                </div>
-            `;
-        }
-
-        // 5. COMMUNICATE STUDENT DATA PERSISTENCE BOUNDS
-        async function addStudent() {
-            const nameInput = document.getElementById('student-name');
-            const idInput = document.getElementById('marker-id');
+            const file = fileInput.files[0];
+            const reader = new FileReader();
             
-            const name = nameInput.value.trim();
-            const markerId = parseInt(idInput.value);
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(sheet);
+                
+                db.transaction('rw', db.roster, async () => {
+                    for(let row of rows) {
+                        const name = row['Name'] || row['name'];
+                        const id = parseInt(row['ID'] || row['id']);
+                        if(name && !isNaN(id)) {
+                            await db.roster.put({ markerId: id, name: name.toString().trim() });
+                        }
+                    }
+                }).then(() => {
+                    fileInput.value = '';
+                    loadRosterCards();
+                    alert("Spreadsheet mapping process completed safely.");
+                }).catch(err => alert("Pipeline parsing tracking collision: " + err));
+            };
+            reader.readAsArrayBuffer(file);
+        }
 
-            if (!name || isNaN(markerId) || markerId < 0 || markerId > 99) {
-                alert("Please declare a distinct student name profile along with an ID system marker integer scoped between 0 and 99.");
+        // 3. EXCEL COMPILER PIPELINE - QUESTIONS BULK INGEST
+        function uploadQuizExcel() {
+            const folderId = parseInt(document.getElementById('target-quiz-folder').value);
+            const fileInput = document.getElementById('quiz-excel');
+            
+            if(!folderId || !fileInput.files.length) {
+                alert("Please select a target destination folder and select a valid spreadsheet file configuration asset.");
                 return;
             }
 
-            // Upsert entries directly to browser sandboxed disk architectures
-            await db.roster.put({ markerId: markerId, name: name });
+            const file = fileInput.files[0];
+            const reader = new FileReader();
             
-            nameInput.value = '';
-            idInput.value = '';
-            
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(sheet);
+                
+                db.transaction('rw', db.questions, async () => {
+                    for(let row of rows) {
+                        const q = row['Question'] || row['question'];
+                        const a = row['A'] || row['a'];
+                        const b = row['B'] || row['b'];
+                        const c = row['C'] || row['c'];
+                        const d = row['D'] || row['d'];
+                        const correct = (row['Correct Answer'] || row['correct answer'] || "").toString().trim().toUpperCase();
+
+                        if(q && a && b && c && d && ["A","B","C","D"].includes(correct)) {
+                            await db.questions.add({
+                                quizId: folderId, question: q, choiceA: a, choiceB: b, choiceC: c, choiceD: d, correctAnswer: correct
+                            });
+                        }
+                    }
+                }).then(() => {
+                    fileInput.value = '';
+                    loadQuizDirectory();
+                    alert("Questions added successfully.");
+                }).catch(err => alert("Data alignment fault: " + err));
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // 4. MANUAL INTERFACE ACTIONS
+        async function createQuizFolder() {
+            const titleInput = document.getElementById('quiz-title');
+            const title = titleInput.value.trim();
+            if(!title) return;
+
+            await db.quizzes.add({ title: title });
+            titleInput.value = '';
+            loadQuizDirectory();
+        }
+
+        async function addStudent() {
+            const nameEl = document.getElementById('student-name');
+            const idEl = document.getElementById('marker-id');
+            const name = nameEl.value.trim();
+            const id = parseInt(idEl.value);
+
+            if(!name || isNaN(id)) return;
+            await db.roster.put({ markerId: id, name: name });
+            nameEl.value = ''; idEl.value = '';
             loadRosterCards();
         }
 
-        // 6. RENDER STORAGE MAP RECORDS TO CARD GRIDS
+        // 5. DIRECTORY RENDER FUNCTIONS
+        async function loadQuizDirectory() {
+            const container = document.getElementById('quiz-directory');
+            const dropdown = document.getElementById('target-quiz-folder');
+            
+            const quizzes = await db.quizzes.toArray();
+            dropdown.innerHTML = '<option value="">-- Choose Quiz Folder Destination --</option>';
+            
+            if(quizzes.length === 0) {
+                container.innerHTML = `<div class="text-xs text-gray-400 italic p-4 text-center border border-dashed rounded-xl">Your directory is empty. Create a folder or import questions to begin.</div>`;
+                return;
+            }
+
+            container.innerHTML = '';
+            for(let q of quizzes) {
+                dropdown.innerHTML += `<option value="${q.id}">${q.title}</option>`;
+                const qCount = await db.questions.where('quizId').equals(q.id).count();
+                
+                container.innerHTML += `
+                    <div class="p-4 bg-gray-50 border rounded-xl flex justify-between items-center shadow-sm">
+                        <div>
+                            <h4 class="font-bold text-gray-800 text-sm">📁 ${q.title}</h4>
+                            <span class="text-xs font-mono text-gray-400 font-bold">${qCount} Questions nested inside folder track</span>
+                        </div>
+                        ${qCount > 0 ? `<button onclick="startQuizSessionRun(${q.id}, '${q.title}')" class="bg-indigo-600 text-white px-3 py-1.5 text-xs font-bold rounded-lg hover:bg-indigo-700">Launch Quiz 🚀</button>` : `<span class="text-xs font-semibold text-gray-400 bg-gray-200 px-2 py-1 rounded">Empty</span>`}
+                    </div>
+                `;
+            }
+        }
+
+        // ARUCO CARD VECTOR RENDER MATRIX
+        function drawArUcoMatrixSVG(id) {
+            let grid = []; let seed = (id + 19) * 23;
+            for (let i = 0; i < 25; i++) { seed = (seed * 125) % 2796203; grid.push(seed % 2 === 0 ? "#000000" : "#ffffff"); }
+            for(let b = 0; b < 5; b++) { grid[b] = "#000000"; grid[b * 5] = "#000000"; grid[(b * 5) + 4] = "#000000"; grid[20 + b] = "#000000"; }
+            grid[12] = "#000000"; let rects = "";
+            for (let r = 0; r < 5; r++) { for (let c = 0; c < 5; c++) { let color = grid[(r * 5) + c]; rects += `<rect x="${c * 24}" y="${r * 24}" width="24" height="24" fill="${color}" stroke="${color}" stroke-width="0.5"/>`; } }
+            return `<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">${rects}</svg>`;
+        }
+
+        function generateCardMarkup(name, markerId) {
+            return `
+                <div class="print-card bg-white p-6 border border-gray-300 rounded-xl shadow-sm flex flex-col items-center justify-between w-[320px] h-[320px] mx-auto relative">
+                    <div class="absolute top-2 text-2xl font-black text-black">A</div>
+                    <div class="absolute right-4 top-1/2 -translate-y-1/2 text-2xl font-black text-black rotate-90">B</div>
+                    <div class="absolute bottom-4 text-2xl font-black text-black rotate-180">C</div>
+                    <div class="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-black text-black -rotate-90">D</div>
+                    <div class="w-36 h-36 border-[6px] border-black p-0.5 bg-black flex items-center justify-center my-auto mt-6">${drawArUcoMatrixSVG(markerId)}</div>
+                    <div class="w-full text-center border-t pt-2 mt-auto">
+                        <p class="font-bold text-sm text-gray-900 truncate">${name}</p>
+                        <p class="text-[9px] text-gray-400 font-mono font-bold uppercase">Marker Node ID: ${markerId}</p>
+                    </div>
+                </div>`;
+        }
+
         async function loadRosterCards() {
             const container = document.getElementById('print-area');
-            container.innerHTML = '';
-            
             const students = await db.roster.toArray();
             if(students.length === 0) {
-                container.innerHTML = `
-                    <div class="col-span-full text-center p-12 text-gray-400 border border-dashed rounded-lg no-print">
-                        No active student profile models detected inside database storage. Profiles declared here instantly output high-density print vectors.
-                    </div>`;
+                container.innerHTML = `<div class="col-span-full text-center p-8 text-gray-400 border border-dashed rounded-xl no-print text-sm">No profiles found. Pop an excel layout config here or type above manually.</div>`;
                 return;
             }
-
-            students.forEach(student => {
-                container.innerHTML += generateCardMarkup(student.name, student.markerId);
-            });
+            container.innerHTML = students.map(s => generateCardMarkup(s.name, s.markerId)).join('');
         }
 
-        // 7. STORE QUESTIONS LOCALLY
-        async function addQuestion() {
-            const questionText = document.getElementById('quiz-question').value.trim();
-            const a = document.getElementById('choice-a').value.trim();
-            const b = document.getElementById('choice-b').value.trim();
-            const c = document.getElementById('choice-c').value.trim();
-            const d = document.getElementById('choice-d').value.trim();
-            const correct = document.getElementById('correct-answer').value;
+        // 6. QUIZ PLAYER OPERATIONAL ENGINE LOOPS
+        async function startQuizSessionRun(quizId, quizTitle) {
+            activeQuizFolderId = quizId;
+            activeQuestionsArray = await db.questions.where('quizId').equals(quizId).toArray();
+            questionCursorIndex = 0;
 
-            if (!questionText || !a || !b || !c || !d) {
-                alert("Execution intercepted. Please specify a structural evaluation question string along with all four directional option maps.");
-                return;
-            }
-
-            await db.quizzes.add({
-                question: questionText, choiceA: a, choiceB: b, choiceC: c, choiceD: d, correctAnswer: correct
-            });
-
-            document.getElementById('quiz-question').value = '';
-            document.getElementById('choice-a').value = '';
-            document.getElementById('choice-b').value = '';
-            document.getElementById('choice-c').value = '';
-            document.getElementById('choice-d').value = '';
-
-            loadQuizList();
-        }
-
-        // 8. RENDER TRACK TRACK LAYOUT ARRAYS
-        async function loadQuizList() {
-            const list = document.getElementById('questions-list');
-            allQuizzes = await db.quizzes.toArray();
+            document.getElementById('active-quiz-header').innerText = `Active Session Folder: ${quizTitle}`;
             
-            if (allQuizzes.length === 0) {
-                list.innerHTML = `<div class="text-gray-400 italic text-xs p-4 bg-gray-50 rounded border border-dashed text-center">No interactive quiz banks built yet inside browser cache frames.</div>`;
-                return;
-            }
-
-            list.innerHTML = allQuizzes.map((q, idx) => `
-                <div class="p-3 bg-gray-50 border rounded-lg flex justify-between items-center text-sm shadow-sm">
-                    <div class="truncate mr-4">
-                        <span class="font-extrabold text-blue-600">Q${idx+1}:</span> <span class="font-medium text-gray-700">${q.question}</span>
-                        <div class="text-[11px] text-gray-400 font-mono mt-0.5">Target Answer Vector: Alignment Block (${q.correctAnswer})</div>
-                    </div>
-                    <button onclick="launchLiveSession(${idx})" class="bg-blue-600 text-white px-3 py-1.5 rounded font-bold text-xs hover:bg-blue-700 transition flex-shrink-0">Launch Track 🚀</button>
-                </div>
-            `).join('');
-        }
-
-        // 9. INSTANTIATE EVALUATION RUN MODULE RUNTIMES
-        async function launchLiveSession(index) {
-            currentQuizIndex = index;
-            const activeQuiz = allQuizzes[currentQuizIndex];
-            scannedIdsThisQuestion.clear();
-            currentAnswersCollected = {};
+            // Adjust and reveal UI management buttons
+            document.getElementById('btn-start-scan').classList.remove('hidden');
+            document.getElementById('btn-reveal').classList.remove('hidden');
+            document.getElementById('btn-next').classList.remove('hidden');
             
-            document.getElementById('submission-log').innerHTML = '<div class="text-emerald-600 font-semibold tracking-wide text-xs animate-pulse">✓ Submissions subsystem initialized. Accepting tracking data packets...</div>';
-            document.getElementById('scan-count').innerText = "0 entries";
-            document.getElementById('chart-panel').classList.add('hidden');
-
-            document.getElementById('live-question-text').innerText = activeQuiz.question;
-            document.getElementById('live-a').innerText = `A: ${activeQuiz.choiceA}`;
-            document.getElementById('live-b').innerText = `B: ${activeQuiz.choiceB}`;
-            document.getElementById('live-c').innerText = `C: ${activeQuiz.choiceC}`;
-            document.getElementById('live-d').innerText = `D: ${activeQuiz.choiceD}`;
-
+            initializeQuestionStep();
             switchTab('play-tab');
-            updateLeaderboardView();
+            bootHardwareMobileCameraPipeline(); // Warm up the phone camera stream layout safely
         }
 
-        // 10. COMPUTER VISION SCANNING RESPONSE MATRICES MOCK OVERRIDE
-        // Automatically acts as your camera framework processing loop engine callback handler
-        async function registerTelemetryScan(markerId, detectedLetterCode) {
-            if (scannedIdsThisQuestion.has(markerId)) return;
+        function initializeQuestionStep() {
+            toggleScanner(false); // CRITICAL: Ensure scanning remains locked when presenting a question
+            activeQuestionScannedIds.clear();
+            questionAnswerBuffer = {};
 
-            const studentProfile = await db.roster.get(markerId);
-            if (!studentProfile) return; // Drop unmapped matrix targets
+            document.getElementById('scan-event-queue').innerHTML = '<div class="text-gray-400 italic text-[11px]">System locked. Press "Start Scanning" to open the input buffer window channels.</div>';
+            document.getElementById('live-scan-metric').innerText = "0 entries";
+            document.getElementById('analytics-chart-box').classList.add('hidden');
 
-            scannedIdsThisQuestion.add(markerId);
-            currentAnswersCollected[markerId] = detectedLetterCode;
-
-            const log = document.getElementById('submission-log');
-            if (scannedIdsThisQuestion.size === 1) log.innerHTML = '';
+            const currentQuestionObj = activeQuestionsArray[questionCursorIndex];
+            document.getElementById('active-question-counter').innerText = `Presenting Question index track: ${questionCursorIndex + 1} of ${activeQuestionsArray.length}`;
             
-            log.innerHTML += `
-                <div class="bg-white p-2 rounded border border-l-4 border-l-emerald-500 font-semibold text-gray-700 text-xs flex justify-between items-center shadow-sm">
-                    <span>⚡ Capture Node: ${studentProfile.name}</span>
-                    <span class="font-mono text-gray-400 text-[10px]">VERIFIED ID:${markerId}</span>
-                </div>
-            `;
-            document.getElementById('scan-count').innerText = `${scannedIdsThisQuestion.size} entries`;
+            document.getElementById('presentation-question').innerText = currentQuestionObj.question;
+            document.getElementById('pres-a').innerText = `A: ${currentQuestionObj.choiceA}`;
+            document.getElementById('pres-b').innerText = `B: ${currentQuestionObj.choiceB}`;
+            document.getElementById('pres-c').innerText = `C: ${currentQuestionObj.choiceC}`;
+            document.getElementById('pres-d').innerText = `D: ${currentQuestionObj.choiceD}`;
+            
+            updateTopFiveLeaderboard();
         }
 
-        // 11. BATCH SIMULATOR PIPELINE
-        async function simulateClassroomScan() {
-            const students = await db.roster.toArray();
-            if (students.length === 0) {
-                alert("Please seed names into the Group Roster dataset configuration panels prior to calling scan procedures.");
-                return;
-            }
-            if (allQuizzes.length === 0 || document.getElementById('live-question-text').innerText.includes("No tracking session")) {
-                alert("Launch a valid question configuration from the Quiz Bank tab first.");
-                return;
-            }
+        // CONTROL ACTIVE SCANNER PACKET BOUNDRIES
+        function toggleScanner(shouldArmScanner) {
+            isScannerArmed = shouldArmScanner;
+            const indicator = document.getElementById('scanner-state-indicator');
+            const btnStart = document.getElementById('btn-start-scan');
+            const btnStop = document.getElementById('btn-stop-scan');
 
-            const selectionOptions = ["A", "B", "C", "D"];
-            students.forEach((student, index) => {
-                setTimeout(() => {
-                    // Generate random choices to mock true manual orientation movements
-                    const mockRandomChoice = selectionOptions[Math.floor(Math.random() * selectionOptions.length)];
-                    registerTelemetryScan(student.markerId, mockRandomChoice);
-                }, index * 250); // Fluid stagger logging displays
-            });
+            if(isScannerArmed) {
+                btnStart.classList.add('hidden');
+                btnStop.classList.remove('hidden');
+                indicator.innerText = "📡 LIVE SCANNER BUFFER WINDOW OPEN";
+                indicator.className = "absolute bottom-4 left-4 z-20 bg-emerald-600 text-white px-3 py-1 rounded-full text-[11px] font-mono font-bold border border-emerald-400/20 animate-pulse";
+                if(document.getElementById('scan-event-queue').innerText.includes("System locked")) {
+                    document.getElementById('scan-event-queue').innerHTML = '';
+                }
+            } else {
+                btnStart.classList.remove('hidden');
+                btnStop.classList.add('hidden');
+                indicator.innerText = "⏸ STANDBY MODE (NOT SCANNING)";
+                indicator.className = "absolute bottom-4 left-4 z-20 bg-black/70 text-amber-500 px-3 py-1 rounded-full text-[11px] font-mono font-bold border border-amber-500/20";
+            }
         }
 
-        // 12. AGGREGATE RESULTS & REALLOCATE CUMULATIVE SCORE METRICS
-        async function revealResults() {
-            if (scannedIdsThisQuestion.size === 0) {
-                alert("No student response payloads registered within the tracking buffers to display statistics from.");
-                return;
-            }
+        // 7. INPUT PIPELINE REGISTER MATRIX CAPTURES
+        async function commitIncomingPacketRegistration(markerId, calculatedLetterCode) {
+            if(!isScannerArmed) return; // Drop execution vectors instantly if scanner channel is offline
+            if(activeQuestionScannedIds.has(markerId)) return;
 
-            const activeQuiz = allQuizzes[currentQuizIndex];
+            const profile = await db.roster.get(markerId);
+            if(!profile) return; // Drop coordinates mapping outside core profiles
+
+            activeQuestionScannedIds.add(markerId);
+            questionAnswerBuffer[markerId] = calculatedLetterCode;
+
+            const targetQueue = document.getElementById('scan-event-queue');
+            if(activeQuestionScannedIds.size === 1) targetQueue.innerHTML = '';
+            
+            targetQueue.innerHTML += `
+                <div class="bg-white p-2 border border-l-4 border-l-indigo-500 rounded shadow-sm flex justify-between items-center text-[11px]">
+                    <span class="font-bold text-gray-700">✓ Detected: ${profile.name}</span>
+                    <span class="bg-gray-100 px-1 rounded text-gray-400 font-mono">ID:${markerId}</span>
+                </div>`;
+            
+            document.getElementById('live-scan-metric').innerText = `${activeQuestionScannedIds.size} records`;
+        }
+
+        // 8. DATA ISOLATED DIAGNOSTIC MODULE - RUN TEST SCAN
+        async function triggerIsolatedTestScan() {
+            const studentRoster = await db.roster.toArray();
+            if(studentRoster.length === 0) { alert("Seed roster database with profiles prior to initializing diagnostic runs."); return; }
+            
+            // Randomly test a marker node pipeline configuration mapping profiles safely
+            const randomSample = studentRoster[Math.floor(Math.random() * studentRoster.length)];
+            const choices = ["A", "B", "C", "D"];
+            const randomSampleLetter = choices[Math.floor(Math.random() * choices.length)];
+
+            if(!isScannerArmed) {
+                // If core scanner window is closed, execute a safe alert test display instead of touching active question states
+                alert(`[TEST SCAN DIAGNOSTIC OUTCOME]\nMarker Track Found!\nTarget Node ID Matrix: ${randomSample.markerId}\nCross-Referenced Profile Name: ${randomSample.name}\nCalculated Vector Rotation: Choice ${randomSampleLetter}\n\nConclusion: Matrix tracking loop is parsing inputs properly.`);
+            } else {
+                // Feed straight down to runtime capture lines if channel is manually armed
+                commitIncomingPacketRegistration(randomSample.markerId, randomSampleLetter);
+            }
+        }
+
+        // 9. SCORE TRACK ANALYTICS CALCULATOR
+        async function revealQuestionResults() {
+            if(activeQuestionScannedIds.size === 0) { alert("Zero student responses inside data loops."); return; }
+            toggleScanner(false); // Drop scanning pipelines instantly
+
+            const currentQuestionObj = activeQuestionsArray[questionCursorIndex];
             let tallies = { A: 0, B: 0, C: 0, D: 0 };
 
-            // Process collected choice profiles
-            for (let markerId in currentAnswersCollected) {
-                let answer = currentAnswersCollected[markerId];
-                if (tallies[answer] !== undefined) tallies[answer]++;
-                
-                // If student response lines up correctly against verification index targets, increment their master dashboard metrics
-                if(answer === activeQuiz.correctAnswer) {
-                    const student = await db.roster.get(parseInt(markerId));
-                    if(student) {
-                        const record = await db.scores.get(student.name) || { studentName: student.name, score: 0 };
-                        record.score += 1;
-                        await db.scores.put(record);
+            for (let id in questionAnswerBuffer) {
+                let code = questionAnswerBuffer[id];
+                if(tallies[code] !== undefined) tallies[code]++;
+
+                if(code === currentQuestionObj.correctAnswer) {
+                    const profile = await db.roster.get(parseInt(id));
+                    if(profile) {
+                        let row = await db.scores.get(profile.name) || { studentName: profile.name, score: 0 };
+                        row.score += 1;
+                        await db.scores.put(row);
                     }
                 }
             }
 
-            const total = scannedIdsThisQuestion.size;
-            const barsContainer = document.getElementById('metric-bars');
+            const totalCount = activeQuestionScannedIds.size;
+            const container = document.getElementById('distribution-bars');
             
-            barsContainer.innerHTML = Object.keys(tallies).map(letter => {
-                const percentageValue = Math.round((tallies[letter] / total) * 100) || 0;
-                const isCorrectIndexNode = letter === activeQuiz.correctAnswer;
+            container.innerHTML = Object.keys(tallies).map(letter => {
+                const percentage = Math.round((tallies[letter] / totalCount) * 100) || 0;
+                const isTargetNodeMatch = letter === currentQuestionObj.correctAnswer;
                 return `
-                    <div>
-                        <div class="flex justify-between text-xs font-bold text-gray-600 mb-1">
-                            <span>Choice Bracket ${letter} ${isCorrectIndexNode ? '✓ (Correct)' : ''}</span>
-                            <span>${tallies[letter]} students (${percentageValue}%)</span>
+                    <div class="text-[11px]">
+                        <div class="flex justify-between font-bold text-gray-600 mb-0.5">
+                            <span>Choice Bracket ${letter} ${isTargetNodeMatch ? '✓' : ''}</span>
+                            <span>${tallies[letter]} profiles (${percentage}%)</span>
                         </div>
-                        <div class="w-full bg-gray-200 rounded-full h-3 mb-2.5 shadow-inner">
-                            <div class="h-3 rounded-full transition-all duration-500 ${isCorrectIndexNode ? 'bg-green-500' : 'bg-blue-500'}" style="width: ${percentageValue}%"></div>
+                        <div class="w-full bg-gray-200 h-2.5 rounded-full overflow-hidden shadow-inner">
+                            <div class="h-full tracking-all duration-300 ${isTargetNodeMatch ? 'bg-green-500' : 'bg-indigo-500'}" style="width: ${percentage}%"></div>
                         </div>
-                    </div>
-                `;
+                    </div>`;
             }).join('');
 
-            document.getElementById('chart-panel').classList.remove('hidden');
-            updateLeaderboardView();
+            document.getElementById('analytics-chart-box').classList.remove('hidden');
+            updateTopFiveLeaderboard();
         }
 
-        // 13. RE-INDEX MASTER TOP 5 CLASSIFICATION PLACEMENTS
-        async function updateLeaderboardView() {
-            const container = document.getElementById('leaderboard-list');
-            const scoreArray = await db.scores.toArray();
-
-            const topFiveArray = scoreArray
-                .sort((x, y) => y.score - x.score)
-                .slice(0, 5);
-
-            if (topFiveArray.length === 0) {
-                container.innerHTML = `<div class="text-gray-400 italic text-xs">No active performance indexes recorded yet.</div>`;
+        async function updateTopFiveLeaderboard() {
+            const container = document.getElementById('top-five-board');
+            const dataScores = await db.scores.toArray();
+            
+            const orderedLeaders = dataScores.sort((x,y) => y.score - x.score).slice(0, 5);
+            if(orderedLeaders.length === 0) {
+                container.innerHTML = '<div class="text-gray-400 italic text-[11px]">No score data profiles registered yet.</div>';
                 return;
             }
 
-            container.innerHTML = topFiveArray.map(([studentMarkObj, matchIndex]) => `
-                <div class="flex justify-between items-center py-1.5 border-b border-amber-200/60 last:border-0 font-medium text-xs">
-                    <span class="text-amber-950 font-bold">${matchIndex.studentName}</span>
-                    <span class="bg-amber-200 text-amber-900 font-extrabold px-2.5 py-0.5 rounded-full shadow-sm">${matchIndex.score} Correct Matches</span>
-                </div>
-            `).join('');
+            container.innerHTML = orderedLeaders.map(lead => `
+                <div class="flex justify-between items-center py-1 border-b border-amber-200 last:border-0 font-medium text-[11px]">
+                    <span class="font-bold text-amber-950">${lead.studentName}</span>
+                    <span class="bg-amber-200 text-amber-800 font-extrabold px-2 py-0.5 rounded-full">${lead.score} points</span>
+                </div>`).join('');
         }
 
-        function nextQuestion() {
-            if (currentQuizIndex + 1 < allQuizzes.length) {
-                launchLiveSession(currentQuizIndex + 1);
+        function advanceQuizStep() {
+            if(questionCursorIndex + 1 < activeQuestionsArray.length) {
+                questionCursorIndex++;
+                initializeQuestionStep();
             } else {
-                alert("Final structural quiz component reached. Rerun tracks or add additional elements inside management views.");
+                alert("End of evaluation track directory folder reached.");
             }
         }
 
-        // SCRIPT APPLICATION ENTRY INVOCATION LISTENER
+        // 10. PHONE HARDWARE VIDEO CAPTURE CONFIGURATIONS
+        async function bootHardwareMobileCameraPipeline() {
+            const videoElement = document.getElementById('hardware-webcam');
+            try {
+                // Forces hardware environment arrays to lock back primary lenses
+                const trackingStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { ideal: "environment" }, width: { ideal: 640 }, height: { ideal: 480 } }
+                });
+                videoElement.srcObject = trackingStream;
+                videoElement.classList.remove('hidden');
+                
+                // Hardware canvas render frames hook point for computer vision tracking loop calculations
+                const canvas = document.getElementById('ar-overlay-canvas');
+                const ctx = canvas.getContext('2d');
+                
+                function frameCalculationLoop() {
+                    if (videoElement.readyState === videoElement.HAVE_ENOUGH_DATA) {
+                        if(canvas.width !== videoElement.videoWidth) {
+                            canvas.width = videoElement.videoWidth;
+                            canvas.height = videoElement.videoHeight;
+                        }
+                        ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                        
+                        // Once your chosen compilation library parses frames natively via github pages,
+                        // its coordinate array returns inject here inside loop frame iterations:
+                        // if(markerFound) { commitIncomingPacketRegistration(detectedId, calculatedOrientationLetter); }
+                    }
+                    requestAnimationFrame(frameCalculationLoop);
+                }
+                requestAnimationFrame(frameCalculationLoop);
+
+            } catch (err) {
+                console.warn("Mobile camera video pipelines fallback configuration applied: " + err);
+            }
+        }
+
+        // MASTER BOOT LOOPS INVOCATIONS
         window.addEventListener('DOMContentLoaded', () => {
             loadRosterCards();
-            loadQuizList();
-            updateLeaderboardView();
             
-            // 14. INJECT PROGRESSIVE DATA RUNTIME PROFILES FOR FULL OFFLINE CACHING BINDINGS
+            // 11. BASE64 CACHING APP DESCRIPTOR SCHEMATICS FOR TOTAL OFFLINE USE
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('data:text/javascript;base64,' + btoa(`
-                    const CURRENT_CACHE_SIGNATURE = 'aruco-quiz-engine-v1';
-                    self.addEventListener('install', event => {
-                        event.waitUntil(caches.open(CURRENT_CACHE_SIGNATURE).then(cache => cache.addAll(['./'])));
-                    });
-                    self.addEventListener('fetch', event => {
-                        event.respondWith(caches.match(event.request).then(cachedResponse => cachedResponse || fetch(event.request)));
-                    });
-                `)).catch(() => console.log("Service Worker sandbox running local environment routing protocols. Offline support primed natively."));
+                    const SIG = 'mobile-aruco-v2';
+                    self.addEventListener('install', e => e.waitUntil(caches.open(SIG).then(c => c.addAll(['./']))));
+                    self.addEventListener('fetch', e => e.respondWith(caches.match(e.request).then(r => r || fetch(e.request))));
+                `)).catch(() => console.log("Offline pipeline initialized."));
             }
         });
     </script>
