@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Offline Mobile ArUco Quiz Suite</title>
+    <!-- Core UI & Storage Dependencies -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.min.js"></script>
+    <!-- SheetJS for 100% Offline Excel parsing -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     
     <style>
@@ -20,6 +22,7 @@
 </head>
 <body class="bg-gray-100 font-sans text-gray-800">
 
+    <!-- Navigation Header -->
     <nav class="bg-indigo-600 text-white p-4 shadow-md no-print sticky top-0 z-50">
         <div class="container mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
             <h1 class="text-lg font-bold tracking-wide">📐 Mobile ArUco Response Suite</h1>
@@ -33,10 +36,12 @@
 
     <main class="container mx-auto p-4 max-w-5xl">
         
+        <!-- TAB 1: ROSTER & ASSESSMENT CARDS -->
         <section id="roster-tab" class="tab-content bg-white p-4 sm:p-6 rounded-lg shadow-sm">
-            <h2 class="text-2xl font-bold mb-2 text-gray-700">Student Roster</h2>
+            <h2 class="text-2xl font-bold mb-2 text-gray-700">Student Roster Management</h2>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 no-print">
+                <!-- Manual Form -->
                 <div class="bg-gray-50 p-4 rounded-xl border">
                     <h3 class="font-bold text-sm text-gray-700 mb-2">Add Student Manually</h3>
                     <div class="space-y-2">
@@ -45,9 +50,10 @@
                         <button onclick="addStudent()" class="w-full bg-emerald-600 text-white py-2 text-sm rounded font-medium hover:bg-emerald-700">Add Student</button>
                     </div>
                 </div>
+                <!-- Excel Upload Form -->
                 <div class="bg-gray-50 p-4 rounded-xl border flex flex-col justify-between">
                     <div>
-                        <h3 class="font-bold text-sm text-gray-700 mb-1">Bulk Import via Excel</h3>
+                        <h3 class="font-bold text-sm text-gray-700 mb-1">Bulk Import via Excel / CSV</h3>
                         <p class="text-xs text-gray-400 mb-3">Format columns: <strong>Name</strong>, <strong>ID</strong></p>
                     </div>
                     <input type="file" id="roster-excel" accept=".xlsx, .xls, .csv" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
@@ -56,36 +62,65 @@
             </div>
 
             <div class="flex justify-between items-center mb-4 no-print border-t pt-4">
-                <span class="text-xs font-semibold text-gray-500">Generated Cards Grid</span>
+                <span class="text-xs font-semibold text-gray-500">Generated Cards & Directory</span>
                 <button onclick="window.print()" class="bg-slate-800 text-white px-4 py-2 text-xs rounded font-bold shadow hover:bg-slate-900">🖨️ Print All Cards</button>
             </div>
 
+            <!-- Print Area Grid Layout -->
             <div id="print-area" class="grid grid-cols-1 sm:grid-cols-2 gap-6"></div>
         </section>
 
+        <!-- TAB 2: QUIZ FOLDER BANK & CONSOLE -->
         <section id="quiz-tab" class="tab-content hidden bg-white p-4 sm:p-6 rounded-lg shadow-sm">
             <h2 class="text-2xl font-bold mb-2 text-gray-700">Quiz Management Bank</h2>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 no-print">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 no-print">
+                <!-- Create a Quiz Folder -->
                 <div class="bg-gray-50 p-4 rounded-xl border flex flex-col justify-between">
                     <div>
-                        <h3 class="font-bold text-sm text-gray-700 mb-1">Create a New Quiz Track</h3>
+                        <h3 class="font-bold text-sm text-gray-700 mb-1">1. Create a New Quiz</h3>
                         <p class="text-xs text-gray-400 mb-3">Creates an assessment folder to group multiple questions together.</p>
                     </div>
                     <input type="text" id="quiz-title" placeholder="e.g., Mathematics Midterm" class="w-full border p-2 text-sm rounded mb-2">
                     <button onclick="createQuizFolder()" class="w-full bg-blue-600 text-white py-2 text-sm rounded font-medium hover:bg-blue-700">Create Quiz Folder</button>
                 </div>
 
+                <!-- Excel Upload Questions into Quiz Folder -->
                 <div class="bg-gray-50 p-4 rounded-xl border flex flex-col justify-between">
                     <div>
-                        <h3 class="font-bold text-sm text-gray-700 mb-1">Import Questions via Excel</h3>
-                        <p class="text-xs text-gray-400 mb-2">Columns: <strong>Question</strong>, <strong>A</strong>, <strong>B</strong>, <strong>C</strong>, <strong>D</strong>, <strong>Correct Answer</strong></p>
+                        <h3 class="font-bold text-sm text-gray-700 mb-1">2a. Bulk Questions Upload</h3>
+                        <p class="text-xs text-gray-400 mb-2">Columns: <strong>Question, A, B, C, D, Correct Answer</strong></p>
                     </div>
-                    <select id="target-quiz-folder" class="w-full border p-2 text-sm rounded mb-2 bg-white font-medium text-gray-700">
-                        <option value="">-- Choose Quiz Folder Destination --</option>
+                    <select id="target-quiz-folder" class="w-full border p-2 text-sm rounded mb-2 bg-white font-medium text-gray-700 dropdown-folder-sync">
+                        <option value="">-- Choose Quiz Target --</option>
                     </select>
                     <input type="file" id="quiz-excel" accept=".xlsx, .xls, .csv" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
                     <button onclick="uploadQuizExcel()" class="w-full bg-indigo-600 text-white py-2 text-sm rounded font-medium hover:bg-indigo-700 mt-2">Parse Questions</button>
+                </div>
+
+                <!-- Manual Question Builder Form -->
+                <div class="bg-gray-50 p-4 rounded-xl border">
+                    <h3 class="font-bold text-sm text-gray-700 mb-1">2b. Add Question Manually</h3>
+                    <select id="manual-quiz-folder" class="w-full border p-1 text-xs rounded mb-2 bg-white font-medium text-gray-700 dropdown-folder-sync">
+                        <option value="">-- Choose Quiz Target --</option>
+                    </select>
+                    <div class="space-y-1.5 text-xs">
+                        <input type="text" id="mq-text" placeholder="Question Text" class="w-full border p-1 rounded">
+                        <div class="grid grid-cols-2 gap-1">
+                            <input type="text" id="mq-a" placeholder="Choice A" class="border p-1 rounded">
+                            <input type="text" id="mq-b" placeholder="Choice B" class="border p-1 rounded">
+                            <input type="text" id="mq-c" placeholder="Choice C" class="border p-1 rounded">
+                            <input type="text" id="mq-d" placeholder="Choice D" class="border p-1 rounded">
+                        </div>
+                        <select id="mq-correct" class="w-full border p-1 rounded bg-white">
+                            <option value="">-- Select Correct Choice Letter --</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
+                        </select>
+                        <button onclick="addManualQuestion()" class="w-full bg-emerald-600 text-white py-1.5 rounded font-bold hover:bg-emerald-700">Save Question</button>
+                    </div>
                 </div>
             </div>
 
@@ -93,7 +128,9 @@
             <div id="quiz-directory" class="space-y-3"></div>
         </section>
 
+        <!-- TAB 3: QUIZ PLAYER ENGINE & HARDWARE SCANNING SYSTEM -->
         <section id="play-tab" class="tab-content hidden bg-white p-4 sm:p-6 rounded-lg shadow-sm">
+            <!-- Active Session Header Panel -->
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-4 mb-4 gap-2">
                 <div>
                     <h2 id="active-quiz-header" class="text-xl font-bold text-gray-800">No Active Session</h2>
@@ -107,6 +144,7 @@
                 </div>
             </div>
 
+            <!-- Central Presenter Board Panel -->
             <div class="bg-gradient-to-br from-slate-800 to-indigo-900 text-white p-5 sm:p-6 rounded-xl shadow-md mb-6">
                 <h1 id="presentation-question" class="text-xl sm:text-2xl font-semibold leading-snug mb-4">Please launch a session loop...</h1>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-base sm:text-lg">
@@ -117,17 +155,21 @@
                 </div>
             </div>
 
+            <!-- Hardware Processing Loop Layout Frame -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Mobile Rear Camera Canvas Pipeline Hook -->
                 <div class="md:col-span-2 bg-black rounded-xl overflow-hidden relative aspect-video flex items-center justify-center border border-slate-900 shadow">
                     <video id="hardware-webcam" class="absolute w-full h-full object-cover hidden" autoplay playsinline></video>
                     <canvas id="ar-overlay-canvas" class="absolute w-full h-full object-cover z-10"></canvas>
                     
+                    <!-- Dynamic Try-Testing Control Box HUD Overlay -->
                     <div class="absolute top-3 left-3 z-20 flex gap-2">
-                        <button onclick="triggerIsolatedTestScan()" class="bg-cyan-600/90 text-white px-3 py-1 text-xs rounded-full font-bold shadow backdrop-blur-sm hover:bg-cyan-500">🧪 Run Test Scan</button>
+                        <button id="btn-try-scan" onclick="toggleTryScanSimulator()" class="bg-cyan-600/90 text-white px-3 py-1.5 text-xs rounded-full font-bold shadow backdrop-blur-sm hover:bg-cyan-500">🔬 TRY SCAN SYSTEM</button>
                     </div>
                     <div id="scanner-state-indicator" class="absolute bottom-4 left-4 z-20 bg-black/70 text-amber-500 px-3 py-1 rounded-full text-[11px] font-mono font-bold border border-amber-500/20">⏸ STANDBY MODE (NOT SCANNING)</div>
                 </div>
 
+                <!-- Live Results Feed Panel Column -->
                 <div class="space-y-4">
                     <div class="bg-gray-50 p-4 rounded-xl border h-52 flex flex-col shadow-sm">
                         <h3 class="font-bold border-b pb-2 text-xs uppercase tracking-wider text-gray-500 flex justify-between">
@@ -152,8 +194,9 @@
 
     </main>
 
+    <!-- CLIENT FRAMEWORK EXECUTION SCRIPTS -->
     <script>
-        // 1. RE-ARCHITECTED DATABASE INFRASTRUCTURE
+        // CORE DATABASE STRUCTURE
         const db = new Dexie("ArUcoClassroomDatabase");
         db.version(2).stores({
             roster: "markerId, name",
@@ -167,6 +210,8 @@
         let questionCursorIndex = 0;
         
         let isScannerArmed = false;
+        let isTryScanning = false;
+        let tryScanTimer = null;
         let activeQuestionScannedIds = new Set();
         let questionAnswerBuffer = {};
 
@@ -174,10 +219,21 @@
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(tabId).classList.remove('hidden');
-            if(tabId === 'quiz-tab') { loadQuizDirectory(); }
+            if(tabId === 'quiz-tab') { syncQuizFoldersDropdowns(); loadQuizDirectory(); }
+            if(tabId === 'roster-tab') { loadRosterCards(); }
         }
 
-        // 2. EXCEL COMPILER PIPELINE - ROSTER BULK INGEST
+        // OBJECT FORMAT HELPER Utility for Excel parsing normalization
+        function normalizeKey(obj, targetKey) {
+            const cleanTarget = targetKey.toLowerCase().replace(/[^a-z0-9]/g, '');
+            for (let originalKey in obj) {
+                const cleanKey = originalKey.toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (cleanKey === cleanTarget) return obj[originalKey];
+            }
+            return null;
+        }
+
+        // 1. EXCEL ROSTER BULK INGESTION FIXED PIPELINE
         function uploadRosterExcel() {
             const fileInput = document.getElementById('roster-excel');
             if(!fileInput.files.length) { alert("Please attach a valid file registry."); return; }
@@ -186,29 +242,35 @@
             const reader = new FileReader();
             
             reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
-                const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                const rows = XLSX.utils.sheet_to_json(sheet);
-                
-                db.transaction('rw', db.roster, async () => {
-                    for(let row of rows) {
-                        const name = row['Name'] || row['name'];
-                        const id = parseInt(row['ID'] || row['id']);
-                        if(name && !isNaN(id)) {
-                            await db.roster.put({ markerId: id, name: name.toString().trim() });
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const rows = XLSX.utils.sheet_to_json(sheet);
+                    
+                    db.transaction('rw', db.roster, async () => {
+                        for(let row of rows) {
+                            const rawName = normalizeKey(row, 'name') || normalizeKey(row, 'studentname');
+                            const rawId = normalizeKey(row, 'id') || normalizeKey(row, 'markerid');
+                            const id = parseInt(rawId);
+                            
+                            if(rawName && !isNaN(id)) {
+                                await db.roster.put({ markerId: id, name: rawName.toString().trim() });
+                            }
                         }
-                    }
-                }).then(() => {
-                    fileInput.value = '';
-                    loadRosterCards();
-                    alert("Spreadsheet mapping process completed safely.");
-                }).catch(err => alert("Pipeline parsing tracking collision: " + err));
+                    }).then(() => {
+                        fileInput.value = '';
+                        loadRosterCards();
+                        alert("Roster Registry processed and reflected inside the database grid.");
+                    }).catch(err => alert("Transaction execution failure: " + err));
+                } catch (err) {
+                    alert("Spreadsheet processing error: " + err.message);
+                }
             };
             reader.readAsArrayBuffer(file);
         }
 
-        // 3. EXCEL COMPILER PIPELINE - QUESTIONS BULK INGEST
+        // 2. EXCEL QUESTIONS BULK INGESTION FIXED PIPELINE
         function uploadQuizExcel() {
             const folderId = parseInt(document.getElementById('target-quiz-folder').value);
             const fileInput = document.getElementById('quiz-excel');
@@ -222,36 +284,72 @@
             const reader = new FileReader();
             
             reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, {type: 'array'});
-                const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                const rows = XLSX.utils.sheet_to_json(sheet);
-                
-                db.transaction('rw', db.questions, async () => {
-                    for(let row of rows) {
-                        const q = row['Question'] || row['question'];
-                        const a = row['A'] || row['a'];
-                        const b = row['B'] || row['b'];
-                        const c = row['C'] || row['c'];
-                        const d = row['D'] || row['d'];
-                        const correct = (row['Correct Answer'] || row['correct answer'] || "").toString().trim().toUpperCase();
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const rows = XLSX.utils.sheet_to_json(sheet);
+                    
+                    db.transaction('rw', db.questions, async () => {
+                        for(let row of rows) {
+                            const q = normalizeKey(row, 'question') || normalizeKey(row, 'questiontext');
+                            const a = normalizeKey(row, 'a') || normalizeKey(row, 'choicea');
+                            const b = normalizeKey(row, 'b') || normalizeKey(row, 'choiceb');
+                            const c = normalizeKey(row, 'c') || normalizeKey(row, 'choicec');
+                            const d = normalizeKey(row, 'd') || normalizeKey(row, 'choiced');
+                            
+                            let correct = normalizeKey(row, 'correctanswer') || normalizeKey(row, 'correct') || "";
+                            correct = correct.toString().trim().toUpperCase();
 
-                        if(q && a && b && c && d && ["A","B","C","D"].includes(correct)) {
-                            await db.questions.add({
-                                quizId: folderId, question: q, choiceA: a, choiceB: b, choiceC: c, choiceD: d, correctAnswer: correct
-                            });
+                            if(q && a && b && c && d && ["A","B","C","D"].includes(correct)) {
+                                await db.questions.add({
+                                    quizId: folderId, question: q.toString().trim(), choiceA: a.toString().trim(), choiceB: b.toString().trim(), choiceC: c.toString().trim(), choiceD: d.toString().trim(), correctAnswer: correct
+                                });
+                            }
                         }
-                    }
-                }).then(() => {
-                    fileInput.value = '';
-                    loadQuizDirectory();
-                    alert("Questions added successfully.");
-                }).catch(err => alert("Data alignment fault: " + err));
+                    }).then(() => {
+                        fileInput.value = '';
+                        loadQuizDirectory();
+                        alert("Questions imported and nested inside target quiz directory.");
+                    }).catch(err => alert("Data alignment fault: " + err));
+                } catch (err) {
+                    alert("Spreadsheet mapping layout runtime failure: " + err.message);
+                }
             };
             reader.readAsArrayBuffer(file);
         }
 
-        // 4. MANUAL INTERFACE ACTIONS
+        // 3. MANUAL QUESTION BUILDER PIPELINE
+        async function addManualQuestion() {
+            const folderId = parseInt(document.getElementById('manual-quiz-folder').value);
+            const qText = document.getElementById('mq-text').value.trim();
+            const cA = document.getElementById('mq-a').value.trim();
+            const cB = document.getElementById('mq-b').value.trim();
+            const cC = document.getElementById('mq-c').value.trim();
+            const cD = document.getElementById('mq-d').value.trim();
+            const cCorrect = document.getElementById('mq-correct').value;
+
+            if(!folderId || !qText || !cA || !cB || !cC || !cD || !cCorrect) {
+                alert("Please fill all fields manually and assign a target folder destination.");
+                return;
+            }
+
+            await db.questions.add({
+                quizId: folderId, question: qText, choiceA: cA, choiceB: cB, choiceC: cC, choiceD: cD, correctAnswer: cCorrect
+            });
+
+            document.getElementById('mq-text').value = '';
+            document.getElementById('mq-a').value = '';
+            document.getElementById('mq-b').value = '';
+            document.getElementById('mq-c').value = '';
+            document.getElementById('mq-d').value = '';
+            document.getElementById('mq-correct').value = '';
+            
+            loadQuizDirectory();
+            alert("Manual question successfully injected into database folder tracks.");
+        }
+
+        // 4. MANUAL INTERFACE STORAGE MANAGEMENT
         async function createQuizFolder() {
             const titleInput = document.getElementById('quiz-title');
             const title = titleInput.value.trim();
@@ -259,7 +357,24 @@
 
             await db.quizzes.add({ title: title });
             titleInput.value = '';
+            syncQuizFoldersDropdowns();
             loadQuizDirectory();
+        }
+
+        async function removeStudent(markerId) {
+            if(confirm("Are you sure you want to completely remove this student profile track?")) {
+                await db.roster.delete(markerId);
+                loadRosterCards();
+            }
+        }
+
+        async function removeQuizFolder(quizId) {
+            if(confirm("Warning! Deleting this quiz will wipe out all nested questions inside it. Proceed?")) {
+                await db.quizzes.delete(quizId);
+                await db.questions.where('quizId').equals(quizId).delete();
+                syncQuizFoldersDropdowns();
+                loadQuizDirectory();
+            }
         }
 
         async function addStudent() {
@@ -274,13 +389,23 @@
             loadRosterCards();
         }
 
-        // 5. DIRECTORY RENDER FUNCTIONS
+        // DROPDOWN FOLDER SYNCHRONIZATION
+        async function syncQuizFoldersDropdowns() {
+            const targets = document.querySelectorAll('.dropdown-folder-sync');
+            const quizzes = await db.quizzes.toArray();
+            
+            targets.forEach(dropdown => {
+                dropdown.innerHTML = '<option value="">-- Choose Quiz Target --</option>';
+                quizzes.forEach(q => {
+                    dropdown.innerHTML += `<option value="${q.id}">${q.title}</option>`;
+                });
+            });
+        }
+
+        // DIRECTORY RENDERS
         async function loadQuizDirectory() {
             const container = document.getElementById('quiz-directory');
-            const dropdown = document.getElementById('target-quiz-folder');
-            
             const quizzes = await db.quizzes.toArray();
-            dropdown.innerHTML = '<option value="">-- Choose Quiz Folder Destination --</option>';
             
             if(quizzes.length === 0) {
                 container.innerHTML = `<div class="text-xs text-gray-400 italic p-4 text-center border border-dashed rounded-xl">Your directory is empty. Create a folder or import questions to begin.</div>`;
@@ -289,38 +414,76 @@
 
             container.innerHTML = '';
             for(let q of quizzes) {
-                dropdown.innerHTML += `<option value="${q.id}">${q.title}</option>`;
                 const qCount = await db.questions.where('quizId').equals(q.id).count();
-                
                 container.innerHTML += `
                     <div class="p-4 bg-gray-50 border rounded-xl flex justify-between items-center shadow-sm">
                         <div>
                             <h4 class="font-bold text-gray-800 text-sm">📁 ${q.title}</h4>
                             <span class="text-xs font-mono text-gray-400 font-bold">${qCount} Questions nested inside folder track</span>
                         </div>
-                        ${qCount > 0 ? `<button onclick="startQuizSessionRun(${q.id}, '${q.title}')" class="bg-indigo-600 text-white px-3 py-1.5 text-xs font-bold rounded-lg hover:bg-indigo-700">Launch Quiz 🚀</button>` : `<span class="text-xs font-semibold text-gray-400 bg-gray-200 px-2 py-1 rounded">Empty</span>`}
+                        <div class="flex gap-2">
+                            ${qCount > 0 ? `<button onclick="startQuizSessionRun(${q.id}, '${q.title}')" class="bg-indigo-600 text-white px-3 py-1.5 text-xs font-bold rounded-lg hover:bg-indigo-700">Launch Quiz 🚀</button>` : `<span class="text-xs font-semibold text-gray-400 bg-gray-200 px-2 py-1.5 rounded">Empty Folder</span>`}
+                            <button onclick="removeQuizFolder(${q.id})" class="bg-red-50 text-red-600 border border-red-200 px-2 py-1.5 text-xs rounded-lg font-medium hover:bg-red-100">Delete</button>
+                        </div>
                     </div>
                 `;
             }
         }
 
-        // ARUCO CARD VECTOR RENDER MATRIX
+        // ARUCO SVG VECTOR ENGINE
         function drawArUcoMatrixSVG(id) {
             let grid = []; let seed = (id + 19) * 23;
             for (let i = 0; i < 25; i++) { seed = (seed * 125) % 2796203; grid.push(seed % 2 === 0 ? "#000000" : "#ffffff"); }
             for(let b = 0; b < 5; b++) { grid[b] = "#000000"; grid[b * 5] = "#000000"; grid[(b * 5) + 4] = "#000000"; grid[20 + b] = "#000000"; }
             grid[12] = "#000000"; let rects = "";
             for (let r = 0; r < 5; r++) { for (let c = 0; c < 5; c++) { let color = grid[(r * 5) + c]; rects += `<rect x="${c * 24}" y="${r * 24}" width="24" height="24" fill="${color}" stroke="${color}" stroke-width="0.5"/>`; } }
-            return `<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">${rects}</svg>`;
+            return `<svg id="aruco-svg-${id}" width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">${rects}</svg>`;
+        }
+
+        // DOWNLOAD SINGLE ARUCO SVG UTILITY
+        function downloadCardSVG(id, studentName) {
+            const svgEl = document.getElementById(`aruco-svg-${id}`);
+            if(!svgEl) return;
+            
+            // Wrap the vector code along with explicit rotation letters for offline usage
+            const cleanName = studentName.replace(/[^a-zA-Z0-9]/g, '_');
+            const wrapperSVG = `
+                <svg width="400" height="400" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" font-family="sans-serif">
+                    <rect width="400" height="400" fill="white" stroke="black" stroke-width="4"/>
+                    <text x="200" y="30" font-size="28" font-weight="900" text-anchor="middle">A</text>
+                    <text x="375" y="210" font-size="28" font-weight="900" text-anchor="middle" transform="rotate(90, 375, 200)">B</text>
+                    <text x="200" y="385" font-size="28" font-weight="900" text-anchor="middle" transform="rotate(180, 200, 380)">C</text>
+                    <text x="25" y="210" font-size="28" font-weight="900" text-anchor="middle" transform="rotate(-90, 25, 200)">D</text>
+                    <g transform="translate(140, 140)">${svgEl.innerHTML}</g>
+                    <text x="200" y="325" font-size="14" font-weight="bold" text-anchor="middle" fill="black">${studentName}</text>
+                    <text x="200" y="345" font-size="10" font-family="monospace" fill="gray" text-anchor="middle">ARUCO MARKER ID: ${id}</text>
+                </svg>`;
+
+            const blob = new Blob([wrapperSVG], {type: "image/svg+xml;charset=utf-8"});
+            const url = URL.createObjectURL(blob);
+            const downloadLink = document.createElement("a");
+            downloadLink.href = url;
+            downloadLink.download = `ArUco_ID${id}_${cleanName}.svg`;
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+            URL.revokeObjectURL(url);
         }
 
         function generateCardMarkup(name, markerId) {
             return `
-                <div class="print-card bg-white p-6 border border-gray-300 rounded-xl shadow-sm flex flex-col items-center justify-between w-[320px] h-[320px] mx-auto relative">
+                <div class="print-card bg-white p-6 border border-gray-300 rounded-xl shadow-sm flex flex-col items-center justify-between w-[320px] h-[350px] mx-auto relative group">
                     <div class="absolute top-2 text-2xl font-black text-black">A</div>
                     <div class="absolute right-4 top-1/2 -translate-y-1/2 text-2xl font-black text-black rotate-90">B</div>
-                    <div class="absolute bottom-4 text-2xl font-black text-black rotate-180">C</div>
+                    <div class="absolute bottom-12 text-2xl font-black text-black rotate(180)">C</div>
                     <div class="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-black text-black -rotate-90">D</div>
+                    
+                    <!-- Top Action bar hidden during master print sessions -->
+                    <div class="absolute top-2 right-2 flex gap-1 no-print opacity-80 group-hover:opacity-100 transition-opacity">
+                        <button onclick="downloadCardSVG(${markerId}, '${name}')" class="bg-indigo-50 text-indigo-600 border px-2 py-0.5 rounded text-[10px] font-bold hover:bg-indigo-100">📥 Download</button>
+                        <button onclick="removeStudent(${markerId})" class="bg-red-50 text-red-600 border border-red-200 px-1.5 py-0.5 rounded text-[10px] font-bold hover:bg-red-100">✕</button>
+                    </div>
+
                     <div class="w-36 h-36 border-[6px] border-black p-0.5 bg-black flex items-center justify-center my-auto mt-6">${drawArUcoMatrixSVG(markerId)}</div>
                     <div class="w-full text-center border-t pt-2 mt-auto">
                         <p class="font-bold text-sm text-gray-900 truncate">${name}</p>
@@ -339,26 +502,25 @@
             container.innerHTML = students.map(s => generateCardMarkup(s.name, s.markerId)).join('');
         }
 
-        // 6. QUIZ PLAYER OPERATIONAL ENGINE LOOPS
+        // 5. QUIZ PLAYER RUNTIME ENGINE
         async function startQuizSessionRun(quizId, quizTitle) {
             activeQuizFolderId = quizId;
             activeQuestionsArray = await db.questions.where('quizId').equals(quizId).toArray();
             questionCursorIndex = 0;
 
-            document.getElementById('active-quiz-header').innerText = `Active Session Folder: ${quizTitle}`;
+            document.getElementById('active-quiz-header').innerText = `Active Session: ${quizTitle}`;
             
-            // Adjust and reveal UI management buttons
             document.getElementById('btn-start-scan').classList.remove('hidden');
             document.getElementById('btn-reveal').classList.remove('hidden');
             document.getElementById('btn-next').classList.remove('hidden');
             
             initializeQuestionStep();
             switchTab('play-tab');
-            bootHardwareMobileCameraPipeline(); // Warm up the phone camera stream layout safely
+            bootHardwareMobileCameraPipeline(); 
         }
 
         function initializeQuestionStep() {
-            toggleScanner(false); // CRITICAL: Ensure scanning remains locked when presenting a question
+            toggleScanner(false); 
             activeQuestionScannedIds.clear();
             questionAnswerBuffer = {};
 
@@ -367,7 +529,7 @@
             document.getElementById('analytics-chart-box').classList.add('hidden');
 
             const currentQuestionObj = activeQuestionsArray[questionCursorIndex];
-            document.getElementById('active-question-counter').innerText = `Presenting Question index track: ${questionCursorIndex + 1} of ${activeQuestionsArray.length}`;
+            document.getElementById('active-question-counter').innerText = `Presenting Question: ${questionCursorIndex + 1} of ${activeQuestionsArray.length}`;
             
             document.getElementById('presentation-question').innerText = currentQuestionObj.question;
             document.getElementById('pres-a').innerText = `A: ${currentQuestionObj.choiceA}`;
@@ -378,7 +540,6 @@
             updateTopFiveLeaderboard();
         }
 
-        // CONTROL ACTIVE SCANNER PACKET BOUNDRIES
         function toggleScanner(shouldArmScanner) {
             isScannerArmed = shouldArmScanner;
             const indicator = document.getElementById('scanner-state-indicator');
@@ -398,55 +559,84 @@
                 btnStop.classList.add('hidden');
                 indicator.innerText = "⏸ STANDBY MODE (NOT SCANNING)";
                 indicator.className = "absolute bottom-4 left-4 z-20 bg-black/70 text-amber-500 px-3 py-1 rounded-full text-[11px] font-mono font-bold border border-amber-500/20";
+                
+                // If live scanning stops, turn off Try Scan loop
+                if(isTryScanning) toggleTryScanSimulator();
             }
         }
 
-        // 7. INPUT PIPELINE REGISTER MATRIX CAPTURES
+        // 6. CONTINUOUS TRY SCANNER SIMULATION PIPELINE
+        async function toggleTryScanSimulator() {
+            const btn = document.getElementById('btn-try-scan');
+            
+            if(isTryScanning) {
+                // STOP SIMULATING
+                isTryScanning = false;
+                clearInterval(tryScanTimer);
+                btn.innerText = "🔬 TRY SCAN SYSTEM";
+                btn.className = "bg-cyan-600/90 text-white px-3 py-1.5 text-xs rounded-full font-bold shadow backdrop-blur-sm hover:bg-cyan-500";
+            } else {
+                // START SIMULATING
+                const studentRoster = await db.roster.toArray();
+                if(studentRoster.length === 0) { 
+                    alert("Please insert or import student records first so the Try Scan system has codes to read."); 
+                    return; 
+                }
+
+                // Force scanner arm state open automatically
+                if(!isScannerArmed) toggleScanner(true);
+
+                isTryScanning = true;
+                btn.innerText = "🛑 STOP TRY LOOP";
+                btn.className = "bg-red-500 text-white px-3 py-1.5 text-xs rounded-full font-bold shadow animate-pulse";
+
+                // Generate responses from the database pool every 1.5 seconds
+                tryScanTimer = setInterval(async () => {
+                    const unsubmitted = studentRoster.filter(s => !activeQuestionScannedIds.has(s.markerId));
+                    if(unsubmitted.length === 0) {
+                        clearInterval(tryScanTimer);
+                        alert("Try Scan Loop Complete: All students in the roster have been successfully captured.");
+                        toggleTryScanSimulator();
+                        return;
+                    }
+
+                    // Pick a random student and assign a random answer choice
+                    const targetStudent = unsubmitted[Math.floor(Math.random() * unsubmitted.length)];
+                    const choices = ["A", "B", "C", "D"];
+                    const generatedChoice = choices[Math.floor(Math.random() * choices.length)];
+
+                    commitIncomingPacketRegistration(targetStudent.markerId, generatedChoice);
+                }, 1500);
+            }
+        }
+
+        // CORE SYSTEM INPUT PIPELINE PACKET CAPTURES
         async function commitIncomingPacketRegistration(markerId, calculatedLetterCode) {
-            if(!isScannerArmed) return; // Drop execution vectors instantly if scanner channel is offline
+            if(!isScannerArmed) return; 
             if(activeQuestionScannedIds.has(markerId)) return;
 
             const profile = await db.roster.get(markerId);
-            if(!profile) return; // Drop coordinates mapping outside core profiles
+            if(!profile) return; 
 
             activeQuestionScannedIds.add(markerId);
             questionAnswerBuffer[markerId] = calculatedLetterCode;
 
             const targetQueue = document.getElementById('scan-event-queue');
-            if(activeQuestionScannedIds.size === 1) targetQueue.innerHTML = '';
+            if(targetQueue.innerText.includes("System locked")) targetQueue.innerHTML = '';
             
-            targetQueue.innerHTML += `
-                <div class="bg-white p-2 border border-l-4 border-l-indigo-500 rounded shadow-sm flex justify-between items-center text-[11px]">
+            targetQueue.innerHTML = `
+                <div class="bg-white p-2 border border-l-4 border-l-indigo-500 rounded shadow-sm flex justify-between items-center text-[11px] mb-1 animate-fade-in">
                     <span class="font-bold text-gray-700">✓ Detected: ${profile.name}</span>
-                    <span class="bg-gray-100 px-1 rounded text-gray-400 font-mono">ID:${markerId}</span>
-                </div>`;
+                    <span class="bg-indigo-100 text-indigo-700 font-bold px-1.5 py-0.5 rounded font-mono text-[10px]">Rotated to: ${calculatedLetterCode}</span>
+                </div>` + targetQueue.innerHTML;
             
             document.getElementById('live-scan-metric').innerText = `${activeQuestionScannedIds.size} records`;
         }
 
-        // 8. DATA ISOLATED DIAGNOSTIC MODULE - RUN TEST SCAN
-        async function triggerIsolatedTestScan() {
-            const studentRoster = await db.roster.toArray();
-            if(studentRoster.length === 0) { alert("Seed roster database with profiles prior to initializing diagnostic runs."); return; }
-            
-            // Randomly test a marker node pipeline configuration mapping profiles safely
-            const randomSample = studentRoster[Math.floor(Math.random() * studentRoster.length)];
-            const choices = ["A", "B", "C", "D"];
-            const randomSampleLetter = choices[Math.floor(Math.random() * choices.length)];
-
-            if(!isScannerArmed) {
-                // If core scanner window is closed, execute a safe alert test display instead of touching active question states
-                alert(`[TEST SCAN DIAGNOSTIC OUTCOME]\nMarker Track Found!\nTarget Node ID Matrix: ${randomSample.markerId}\nCross-Referenced Profile Name: ${randomSample.name}\nCalculated Vector Rotation: Choice ${randomSampleLetter}\n\nConclusion: Matrix tracking loop is parsing inputs properly.`);
-            } else {
-                // Feed straight down to runtime capture lines if channel is manually armed
-                commitIncomingPacketRegistration(randomSample.markerId, randomSampleLetter);
-            }
-        }
-
-        // 9. SCORE TRACK ANALYTICS CALCULATOR
+        // REVEAL ANALYTICS CALCULATIONS
         async function revealQuestionResults() {
             if(activeQuestionScannedIds.size === 0) { alert("Zero student responses inside data loops."); return; }
-            toggleScanner(false); // Drop scanning pipelines instantly
+            toggleScanner(false); 
 
             const currentQuestionObj = activeQuestionsArray[questionCursorIndex];
             let tallies = { A: 0, B: 0, C: 0, D: 0 };
@@ -474,11 +664,11 @@
                 return `
                     <div class="text-[11px]">
                         <div class="flex justify-between font-bold text-gray-600 mb-0.5">
-                            <span>Choice Bracket ${letter} ${isTargetNodeMatch ? '✓' : ''}</span>
+                            <span>Choice Bracket ${letter} ${isTargetNodeMatch ? '📢 CORRECT' : ''}</span>
                             <span>${tallies[letter]} profiles (${percentage}%)</span>
                         </div>
                         <div class="w-full bg-gray-200 h-2.5 rounded-full overflow-hidden shadow-inner">
-                            <div class="h-full tracking-all duration-300 ${isTargetNodeMatch ? 'bg-green-500' : 'bg-indigo-500'}" style="width: ${percentage}%"></div>
+                            <div class="h-full bg-indigo-500 ${isTargetNodeMatch ? '!bg-green-500' : ''}" style="width: ${percentage}%"></div>
                         </div>
                     </div>`;
             }).join('');
@@ -500,7 +690,7 @@
             container.innerHTML = orderedLeaders.map(lead => `
                 <div class="flex justify-between items-center py-1 border-b border-amber-200 last:border-0 font-medium text-[11px]">
                     <span class="font-bold text-amber-950">${lead.studentName}</span>
-                    <span class="bg-amber-200 text-amber-800 font-extrabold px-2 py-0.5 rounded-full">${lead.score} points</span>
+                    <span class="bg-amber-200 text-amber-800 font-extrabold px-2 py-0.5 rounded-full">${lead.score} pts</span>
                 </div>`).join('');
         }
 
@@ -513,18 +703,16 @@
             }
         }
 
-        // 10. PHONE HARDWARE VIDEO CAPTURE CONFIGURATIONS
+        // HARDWARE REAR WEB CAMERA STREAM DRIVER INITIALIZATION
         async function bootHardwareMobileCameraPipeline() {
             const videoElement = document.getElementById('hardware-webcam');
             try {
-                // Forces hardware environment arrays to lock back primary lenses
                 const trackingStream = await navigator.mediaDevices.getUserMedia({
                     video: { facingMode: { ideal: "environment" }, width: { ideal: 640 }, height: { ideal: 480 } }
                 });
                 videoElement.srcObject = trackingStream;
                 videoElement.classList.remove('hidden');
                 
-                // Hardware canvas render frames hook point for computer vision tracking loop calculations
                 const canvas = document.getElementById('ar-overlay-canvas');
                 const ctx = canvas.getContext('2d');
                 
@@ -535,32 +723,20 @@
                             canvas.height = videoElement.videoHeight;
                         }
                         ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-                        
-                        // Once your chosen compilation library parses frames natively via github pages,
-                        // its coordinate array returns inject here inside loop frame iterations:
-                        // if(markerFound) { commitIncomingPacketRegistration(detectedId, calculatedOrientationLetter); }
                     }
                     requestAnimationFrame(frameCalculationLoop);
                 }
                 requestAnimationFrame(frameCalculationLoop);
-
             } catch (err) {
-                console.warn("Mobile camera video pipelines fallback configuration applied: " + err);
+                console.warn("Mobile camera video streaming fallback applied: " + err);
             }
         }
 
-        // MASTER BOOT LOOPS INVOCATIONS
+        // APP INITIALIZER BOOT STRAP
         window.addEventListener('DOMContentLoaded', () => {
+            syncQuizFoldersDropdowns();
+            loadQuizDirectory();
             loadRosterCards();
-            
-            // 11. BASE64 CACHING APP DESCRIPTOR SCHEMATICS FOR TOTAL OFFLINE USE
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('data:text/javascript;base64,' + btoa(`
-                    const SIG = 'mobile-aruco-v2';
-                    self.addEventListener('install', e => e.waitUntil(caches.open(SIG).then(c => c.addAll(['./']))));
-                    self.addEventListener('fetch', e => e.respondWith(caches.match(e.request).then(r => r || fetch(e.request))));
-                `)).catch(() => console.log("Offline pipeline initialized."));
-            }
         });
     </script>
 </body>
