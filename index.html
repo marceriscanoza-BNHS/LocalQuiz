@@ -3,148 +3,611 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Instant ArUco Scanner Test</title>
+    <title>Classroom Response Suite</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     
     <script src="https://cdn.jsdelivr.net/npm/jsaruco@1.0.0/src/svd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsaruco@1.0.0/src/cv.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsaruco@1.0.0/src/aruco.js"></script>
-</head>
-<body class="bg-slate-950 text-slate-100 font-sans min-h-screen p-4 flex flex-col items-center justify-center select-none">
-
-    <div class="w-full max-w-xl bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl">
-        <div class="mb-4 text-center">
-            <h1 class="text-xl font-black tracking-wider text-white">📡 ARUCO SQUARE SCANNER</h1>
-            <p class="text-xs text-slate-400 mt-1">Lightweight real-time orientation tracker</p>
-        </div>
-
-        <div class="relative aspect-video bg-black rounded-xl overflow-hidden border-2 border-indigo-500/30 mb-4">
-            <video id="video-stream" class="absolute inset-0 w-full h-full object-cover" autoplay playsinline muted></video>
-            <canvas id="overlay-canvas" class="absolute inset-0 w-full h-full object-cover z-10"></canvas>
-            
-            <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-                <div class="w-32 h-32 border border-dashed border-indigo-400/20 rounded-lg"></div>
-            </div>
-        </div>
-
-        <div class="bg-slate-950 rounded-xl p-4 border border-slate-800 font-mono text-xs space-y-1">
-            <div class="flex justify-between items-center text-slate-400 border-b border-slate-800 pb-2 mb-2 font-sans font-bold">
-                <span>TELEMETRY PACKET</span>
-                <span id="scan-status" class="text-amber-400 animate-pulse">● INITIALIZING CAMERA</span>
-            </div>
-            <div>Marker ID Detected: <span id="log-id" class="text-white font-bold">--</span></div>
-            <div>Parsed Student Choice: <span id="log-choice" class="text-emerald-400 font-black text-sm">--</span></div>
-        </div>
-    </div>
-
-    <script>
-        const video = document.getElementById('video-stream');
-        const canvas = document.getElementById('overlay-canvas');
-        const ctx = canvas.getContext('2d');
-        
-        let detector;
-
-        async function initScanner() {
-            // Initialize the lightweight detector instance
-            detector = new AR.Detector();
-
-            // Explicit configuration setup targeting mobile environment lenses
-            const hardwareConstraints = {
-                audio: false,
-                video: {
-                    facingMode: { ideal: "environment" }, // Forces back camera on phones
-                    width: { ideal: 640 },
-                    height: { ideal: 480 }
-                }
-            };
-
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia(hardwareConstraints);
-                video.srcObject = stream;
-                
-                // Force inline mobile viewing via programmatic attributes
-                video.setAttribute("playsinline", true);
-                video.setAttribute("webkit-playsinline", true);
-                video.setAttribute("muted", true);
-                video.setAttribute("autoplay", true);
-
-                video.addEventListener('loadedmetadata', () => {
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    document.getElementById('scan-status').innerText = "● WAITING FOR SQUARES";
-                    requestAnimationFrame(scanLoop);
-                });
-            } catch (err) {
-                console.error("Primary environment camera failed, attempting universal fallback:", err);
-                // Secondary Fallback Attempt: Ask for generic user video stream if environment parameter locks
-                try {
-                    const fallbackStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
-                    video.srcObject = fallbackStream;
-                    video.setAttribute("playsinline", true);
-                    video.setAttribute("muted", true);
-                    video.setAttribute("autoplay", true);
-                } catch (fallbackErr) {
-                    alert("Camera Access Error: Please make sure you are loading via HTTPS and have granted site permissions.");
-                    document.getElementById('scan-status').innerText = "❌ CAMERA BLOCKED";
-                    document.getElementById('scan-status').className = "text-red-500 font-bold";
-                }
+    
+    <style>
+        @media print {
+            @page { size: A4 portrait; margin: 0cm; }
+            html, body { width: 210mm; height: 297mm; background: #fff; }
+            #master-nav, .no-print, button { display: none !important; }
+            #main-content-wrapper { padding: 0 !important; margin: 0 !important; max-w: 100% !important; }
+            #roster-tab { border: none !important; padding: 0 !important; }
+            #print-area { display: block !important; width: 210mm !important; }
+            .print-card {
+                box-sizing: border-box !important;
+                width: 210mm !important;
+                height: 148.5mm !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                padding: 22mm 20mm !important;
+                border: 4px solid #000 !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
             }
         }
+        .fade-in-item { animation: fadeIn 0.3s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans text-gray-800 antialiased select-none">
 
-        function scanLoop() {
-            if (video.readyState === video.HAVE_CURRENT_DATA) {
-                // Copy video frame pixels straight to canvas layout
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                
-                // Extract clean image pixel matrix data
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                
-                // Run the square-marker detection pass
-                const markers = detector.detect(imageData);
+    <nav id="master-nav" class="bg-indigo-700 text-white shadow-md no-print sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <h1 class="text-base font-bold tracking-wider flex items-center gap-2">📐 Classroom Scanner Suite</h1>
+            <div class="flex flex-wrap gap-1.5 text-xs">
+                <button onclick="switchTab('roster-tab')" class="px-3 py-2 rounded bg-indigo-800 font-medium hover:bg-indigo-900 transition">Group Roster</button>
+                <button onclick="switchTab('quiz-tab')" class="px-3 py-2 rounded bg-indigo-800 font-medium hover:bg-indigo-900 transition">Quiz Folder Bank</button>
+                <button onclick="switchTab('summary-tab')" class="px-3 py-2 rounded bg-purple-600 text-white font-bold hover:bg-purple-700 transition">🏆 Leaderboard</button>
+            </div>
+        </div>
+    </nav>
 
-                if (markers.length > 0) {
-                    const marker = markers[0]; // Focus tracking on the first visible square marker
+    <main id="main-content-wrapper" class="container mx-auto p-4 max-w-5xl">
+        
+        <section id="roster-tab" class="tab-content bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+            <div class="flex justify-between items-center mb-4 no-print">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800">Student Profiles & Card Print Setup</h2>
+                    <p class="text-xs text-gray-400 mt-0.5 font-medium">Cards generate using standard square matrix markers (IDs 0-249).</p>
+                </div>
+                <button onclick="window.print()" class="bg-slate-900 text-white px-5 py-2.5 text-xs font-bold rounded-lg shadow hover:bg-slate-800 transition">🖨️ Print All Cards (Half-A4)</button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 no-print">
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <h3 class="font-bold text-xs uppercase tracking-wider text-slate-600 mb-1">Bulk Upload Profiles (.csv / .xlsx)</h3>
+                    <p class="text-[11px] text-gray-400 mb-3 leading-relaxed">Headers required exactly: <code class="bg-gray-200 px-1 py-0.5 rounded text-slate-700 font-mono font-bold">Name</code> and <code class="bg-gray-200 px-1 py-0.5 rounded text-slate-700 font-mono font-bold">ID</code>.</p>
+                    <div class="space-y-2">
+                        <input type="file" id="roster-file-input" accept=".csv, .xlsx, .xls" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
+                        <button onclick="processRosterUpload()" class="w-full bg-indigo-600 text-white py-2 text-xs rounded-lg font-bold hover:bg-indigo-700 transition shadow-sm">Import Roster File</button>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <h3 class="font-bold text-xs uppercase tracking-wider text-slate-600 mb-3">Add Profile Manually</h3>
+                    <div class="grid grid-cols-3 gap-2 mb-2">
+                        <input type="text" id="manual-student-name" placeholder="Student Name" class="col-span-2 border p-2 text-xs rounded-lg bg-white">
+                        <input type="number" id="manual-marker-id" placeholder="ID (0-249)" min="0" max="249" class="border p-2 text-xs rounded-lg bg-white font-mono">
+                    </div>
+                    <button onclick="saveManualStudent()" class="w-full bg-emerald-600 text-white py-2 text-xs rounded-lg font-bold hover:bg-emerald-700 transition shadow-sm">Save Student Entry</button>
+                </div>
+            </div>
+
+            <div id="print-area" class="grid grid-cols-1 sm:grid-cols-2 gap-6 border-t pt-4"></div>
+        </section>
+
+        <section id="quiz-tab" class="tab-content hidden bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Quiz Bank Folders</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col justify-between">
+                    <div><h3 class="font-bold text-xs uppercase tracking-wider text-slate-600 mb-1">1. Create Active Folder</h3></div>
+                    <input type="text" id="quiz-folder-title" placeholder="e.g., Science Quiz 1" class="w-full border p-2 text-xs rounded-lg bg-white mb-2">
+                    <button onclick="saveQuizFolder()" class="w-full bg-blue-600 text-white py-2 text-xs rounded-lg font-bold hover:bg-blue-700 transition">Create Folder</button>
+                </div>
+
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col justify-between">
+                    <div><h3 class="font-bold text-xs uppercase tracking-wider text-slate-600 mb-1">2a. Upload Questions File</h3></div>
+                    <select id="bulk-target-folder" class="w-full border p-2 text-xs rounded-lg bg-white mb-2 font-medium text-gray-700 folder-dropdown-sync"></select>
+                    <input type="file" id="questions-file-input" accept=".csv, .xlsx, .xls" class="block w-full text-[10px] text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-[10px] file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                    <button onclick="processQuestionsUpload()" class="w-full bg-indigo-600 text-white py-2 text-xs rounded-lg font-bold hover:bg-indigo-700 transition mt-2">Parse Questions File</button>
+                </div>
+
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <h3 class="font-bold text-xs uppercase tracking-wider text-slate-600 mb-1">2b. Add Question Manually</h3>
+                    <select id="manual-target-folder" class="w-full border p-1.5 text-xs rounded-lg bg-white mb-1.5 font-medium text-gray-700 folder-dropdown-sync"></select>
+                    <div class="space-y-1 text-[11px]">
+                        <input type="text" id="mq-text" placeholder="Question string..." class="w-full border p-1.5 rounded-lg bg-white">
+                        <div class="grid grid-cols-2 gap-1">
+                            <input type="text" id="mq-a" placeholder="Option A" class="border p-1 rounded-lg bg-white">
+                            <input type="text" id="mq-b" placeholder="Option B" class="border p-1 rounded-lg bg-white">
+                            <input type="text" id="mq-c" placeholder="Option C" class="border p-1 rounded-lg bg-white">
+                            <input type="text" id="mq-d" placeholder="Option D" class="border p-1 rounded-lg bg-white">
+                        </div>
+                        <select id="mq-correct" class="w-full border p-1 rounded-lg bg-white font-bold text-indigo-600">
+                            <option value="">-- Choose Correct Answer --</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
+                        </select>
+                        <button onclick="saveManualQuestion()" class="w-full bg-emerald-600 text-white py-1.5 rounded-lg font-bold hover:bg-emerald-700 transition shadow-sm">Save to Folder</button>
+                    </div>
+                </div>
+            </div>
+            <div id="quiz-directory" class="space-y-2"></div>
+        </section>
+
+        <section id="play-tab" class="tab-content hidden fixed inset-0 bg-slate-900 text-white z-50 overflow-hidden flex flex-col">
+            <div id="arena-phase-1" class="flex-1 flex flex-col p-6 justify-between max-w-4xl mx-auto w-full">
+                <div class="flex justify-between items-center text-xs tracking-widest text-indigo-400 font-bold font-mono border-b border-slate-800 pb-3">
+                    <span id="p1-title-card">QUIZ RUNNER ACTIVE</span>
+                    <button onclick="exitFullscreenQuizArena()" class="text-red-400 bg-red-950/40 border border-red-900 px-3 py-1 rounded-lg hover:bg-red-900 hover:text-white transition">✕ Close Arena</button>
+                </div>
+                <div class="my-auto py-6">
+                    <h1 id="p1-question-text" class="text-2xl sm:text-4xl font-extrabold leading-tight text-slate-100 mb-8">Loading question...</h1>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm sm:text-lg">
+                        <div id="p1-a" class="bg-slate-800/80 p-4 rounded-xl border border-slate-700 font-semibold text-slate-300">A: --</div>
+                        <div id="p1-b" class="bg-slate-800/80 p-4 rounded-xl border border-slate-700 font-semibold text-slate-300">B: --</div>
+                        <div id="p1-c" class="bg-slate-800/80 p-4 rounded-xl border border-slate-700 font-semibold text-slate-300">C: --</div>
+                        <div id="p1-d" class="bg-slate-800/80 p-4 rounded-xl border border-slate-700 font-semibold text-slate-300">D: --</div>
+                    </div>
+                </div>
+                <div class="border-t border-slate-800 pt-4 pb-2 flex justify-center">
+                    <button onclick="transitionToPhase2()" class="bg-emerald-500 text-slate-950 text-base font-black px-12 py-4 rounded-xl shadow-lg hover:bg-emerald-400 transition">📡 START SCANNING</button>
+                </div>
+            </div>
+
+            <div id="arena-phase-2" class="hidden flex-1 relative w-full h-full flex flex-col md:flex-row">
+                <div class="flex-1 bg-black relative w-full h-full">
+                    <video id="webcam-hardware-stream" class="absolute w-full h-full object-cover" autoplay playsinline webkit-playsinline="true" muted></video>
+                    <canvas id="vision-processing-canvas" class="absolute w-full h-full object-cover z-10"></canvas>
+                    <div class="absolute top-4 left-4 z-30">
+                        <button id="ctrl-try-scan" onclick="toggleTryScanEngine()" class="bg-cyan-600/90 text-white px-3 py-1.5 text-xs font-bold rounded-full shadow backdrop-blur-md hover:bg-cyan-500">🔬 SIMULATOR</button>
+                    </div>
+                </div>
+                <div class="w-full md:w-80 bg-slate-950 border-t md:border-t-0 md:border-l border-slate-800 flex flex-col justify-between h-2/5 md:h-full z-20">
+                    <div class="p-3 border-b border-slate-800 bg-slate-900/60 flex justify-between items-center">
+                        <div>
+                            <h3 class="text-xs font-bold tracking-wider text-slate-400 uppercase">Incoming Logs</h3>
+                            <p id="p2-live-counter" class="text-xs font-mono font-bold text-indigo-400">0 Responses Ingested</p>
+                        </div>
+                    </div>
+                    <div id="p2-log-stream" class="flex-1 p-3 overflow-y-auto space-y-1.5 text-xs text-slate-200">
+                        <span class="text-slate-500 italic">No active signatures identified...</span>
+                    </div>
+                    <div class="p-3 border-t border-slate-800 bg-slate-900/40">
+                        <button onclick="transitionToPhase3()" class="w-full bg-indigo-600 text-white py-3 rounded-xl text-sm font-bold shadow hover:bg-indigo-500 transition">⏹ FINISH SCANNING</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="arena-phase-3" class="hidden flex-1 flex flex-col p-6 justify-between max-w-4xl mx-auto w-full">
+                <div class="text-xs tracking-widest text-purple-400 font-bold font-mono border-b border-slate-800 pb-3">QUESTION ANALYTICS PROFILE SUMMARY</div>
+                <div class="my-auto space-y-6 max-w-xl mx-auto w-full py-4">
+                    <h2 id="p3-question-title-fallback" class="text-lg font-bold text-slate-300 text-center mb-4 truncate"></h2>
+                    <div id="p3-analytics-bars-box" class="space-y-3 bg-slate-800/40 p-6 rounded-2xl border border-slate-800 shadow-xl"></div>
+                </div>
+                <div class="border-t border-slate-800 pt-4 pb-2 flex gap-3 justify-center">
+                    <button onclick="stepToNextQuestion()" class="bg-indigo-600 text-white text-base font-bold px-12 py-3.5 rounded-xl shadow-lg hover:bg-indigo-500 transition">Next Question ➡️</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="summary-tab" class="tab-content hidden bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+            <div class="flex justify-between items-center border-b pb-3 mb-4">
+                <div><h2 class="text-xl font-bold text-gray-800">🏆 Assessment Leaderboard</h2></div>
+                <button onclick="purgeLeaderboardMetrics()" class="bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 text-xs rounded-lg font-bold hover:bg-red-100 transition">Reset All Standings</button>
+            </div>
+            <div id="master-leaderboard-view" class="space-y-2 max-w-md mx-auto"></div>
+        </section>
+    </main>
+
+    <script>
+        const db = new Dexie("HighSpeedClassroomDB");
+        db.version(1).stores({
+            roster: "markerId, name",
+            quizzes: "++id, title",
+            questions: "++id, quizId, question, choiceA, choiceB, choiceC, choiceD, correctAnswer",
+            scores: "studentName, score"
+        });
+
+        let activeQuizFolderId = null;
+        let activeQuestionsArray = [];
+        let questionCursorIndex = 0;
+        let isScannerArmed = false;
+        let isTryScanRunning = false;
+        let tryScanTimerInterval = null;
+        let questionLoggedIdsSet = new Set();
+        let questionAnswersBufferMap = {};
+        
+        let jsArucoDetector = new AR.Detector();
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+            if(tabId === 'quiz-tab') { syncFolderDropdowns(); loadQuizDirectory(); }
+            if(tabId === 'roster-tab') { loadRosterCards(); }
+            if(tabId === 'summary-tab') { displayMasterLeaderboard(); }
+        }
+
+        function get4x4MarkerGrid(id) {
+            let bits = [];
+            let seed = (id + 13) * 31;
+            for(let i=0; i<16; i++) {
+                seed = (seed * 13) % 257;
+                bits.push(seed % 2 === 0 ? 1 : 0);
+            }
+            bits[0] = 0; bits[3] = 1; bits[12] = 1;
+            return bits;
+        }
+
+        function buildArUcoSVGStringMarkup(id) {
+            const bits = get4x4MarkerGrid(id);
+            let rects = `<rect x="0" y="0" width="144" height="144" fill="black"/>`;
+            for (let r = 0; r < 4; r++) {
+                for (let c = 0; c < 4; c++) {
+                    let fill = bits[(r * 4) + c] === 1 ? "#ffffff" : "#000000";
+                    rects += `<rect x="${24 + (c * 24)}" y="${24 + (r * 24)}" width="24" height="24" fill="${fill}"/>`;
+                }
+            }
+            return `<svg class="w-full h-full" viewBox="0 0 144 144" xmlns="http://www.w3.org/2000/svg">${rects}</svg>`;
+        }
+
+        async function loadRosterCards() {
+            const container = document.getElementById('print-area'); const list = await db.roster.toArray();
+            if(list.length === 0) { container.innerHTML = `<div class="col-span-full text-center text-xs p-8 text-gray-400 border border-dashed rounded-xl">No profiles found.</div>`; return; }
+            container.innerHTML = list.map(s => `
+                <div class="print-card bg-white border-2 border-slate-300 rounded-2xl shadow-sm flex flex-col items-center justify-between w-full h-[380px] max-w-sm mx-auto relative group fade-in-item">
+                    <div class="absolute top-2 font-black text-2xl text-black">A</div>
+                    <div class="absolute right-4 top-1/2 -translate-y-1/2 font-black text-2xl text-black rotate-90">B</div>
+                    <div class="absolute bottom-2 font-black text-2xl text-black rotate-180">C</div>
+                    <div class="absolute left-4 top-1/2 -translate-y-1/2 font-black text-2xl text-black -rotate-90">D</div>
+                    <div class="absolute top-2 right-2 flex gap-1 no-print">
+                        <button onclick="removeStudentProfile(${s.markerId})" class="bg-red-50 text-red-600 font-bold px-1.5 py-0.5 rounded text-[10px] hover:bg-red-100">✕</button>
+                    </div>
+                    <div class="w-48 h-48 p-0.5 bg-black flex items-center justify-center my-auto mt-6">${buildArUcoSVGStringMarkup(s.markerId)}</div>
+                    <div class="w-full text-center border-t pt-2 mt-auto">
+                        <h5 class="font-black text-sm text-gray-900 truncate px-4">${s.name}</h5>
+                        <span class="text-[10px] font-mono text-gray-400 font-bold">CARD ID: ${s.markerId}</span>
+                    </div>
+                </div>`).join('');
+        }
+
+        function parseCameraImageWithEngine(videoElement, canvasElement, ctx) {
+            if (!isScannerArmed || isTryScanRunning) return;
+
+            ctx.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+            let imgData = ctx.getImageData(0, 0, canvasElement.width, canvasElement.height);
+            
+            let markers = jsArucoDetector.detect(imgData);
+
+            if (markers.length > 0) {
+                for (let i = 0; i < markers.length; ++i) {
+                    const marker = markers[i];
                     
-                    // The corner array indexes tell us exactly how the square is tilted in space.
-                    // We calculate the delta vector between corner 0 and corner 1 to locate "UP".
                     let xDiff = marker.corners[1].x - marker.corners[0].x;
                     let yDiff = marker.corners[1].y - marker.corners[0].y;
                     let angle = Math.atan2(yDiff, xDiff) * (180 / Math.PI);
-
-                    // Normalize angle to clean 0-360 range
                     if (angle < 0) angle += 360;
 
-                    // Map 90-degree rotations to letter choices
-                    let choice = "A";
-                    if (angle > 45 && angle <= 135) choice = "B";
-                    else if (angle > 135 && angle <= 225) choice = "C";
-                    else if (angle > 225 && angle <= 315) choice = "D";
+                    let code = "A";
+                    if (angle > 45 && angle <= 135) code = "B";
+                    else if (angle > 135 && angle <= 225) code = "C";
+                    else if (angle > 225 && angle <= 315) code = "D";
 
-                    // Update UI Dashboard fields
-                    document.getElementById('scan-status').innerText = "● MARKER LOCKED";
-                    document.getElementById('scan-status').className = "text-emerald-400 font-bold";
-                    document.getElementById('log-id').innerText = marker.id;
-                    document.getElementById('log-choice').innerText = choice;
-
-                    // Draw a visual box outline around the detected target card corners
+                    // Green tracking boundaries
                     ctx.strokeStyle = "#10b981";
                     ctx.lineWidth = 4;
                     ctx.beginPath();
                     ctx.moveTo(marker.corners[0].x, marker.corners[0].y);
-                    for (let c = 1; c < 4; c++) {
-                        ctx.lineTo(marker.corners[c].x, marker.corners[c].y);
-                    }
+                    for (let c = 1; c < 4; c++) { ctx.lineTo(marker.corners[c].x, marker.corners[c].y); }
                     ctx.closePath();
                     ctx.stroke();
-                } else {
-                    document.getElementById('scan-status').innerText = "● WAITING FOR SQUARES";
-                    document.getElementById('scan-status').className = "text-amber-400 animate-pulse";
+
+                    registerScannedAnswerTelemetryPacket(marker.id, code);
                 }
             }
-            requestAnimationFrame(scanLoop);
         }
 
-        window.addEventListener('DOMContentLoaded', initScanner);
+        async function registerScannedAnswerTelemetryPacket(markerId, orientationLetterCode) {
+            if(!isScannerArmed) return;
+            if(questionLoggedIdsSet.has(markerId)) return;
+            const profile = await db.roster.get(markerId); if(!profile) return;
+
+            questionLoggedIdsSet.add(markerId);
+            questionAnswersBufferMap[markerId] = orientationLetterCode;
+
+            const log = document.getElementById('p2-log-stream');
+            if(log.innerText.includes("No active data") || log.innerText.includes("No active signatures") || log.innerText.includes("No markers read")) log.innerHTML = '';
+
+            log.innerHTML = `
+                <div class="bg-slate-900 p-2 border border-slate-800 rounded-lg flex justify-between items-center font-semibold text-slate-200 fade-in-item">
+                    <span>✓ ${profile.name}</span>
+                    <span class="bg-indigo-950 text-indigo-400 font-mono font-bold px-1.5 py-0.5 rounded text-[10px]">Choice: ${orientationLetterCode}</span>
+                </div>` + log.innerHTML;
+
+            document.getElementById('p2-live-counter').innerText = `${questionLoggedIdsSet.size} Responses Ingested`;
+        }
+
+        let isCameraStreamRunning = false;
+        async function initializeCameraHardwareDecoderStream() {
+            if(isCameraStreamRunning) return;
+            const video = document.getElementById('webcam-hardware-stream');
+            const viewCanvas = document.getElementById('vision-processing-canvas'); 
+            const ctx = viewCanvas.getContext('2d');
+
+            const constraints = {
+                audio: false,
+                video: { facingMode: { ideal: "environment" }, width: { ideal: 640 }, height: { ideal: 480 } }
+            };
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+                video.setAttribute("playsinline", true);
+                video.setAttribute("webkit-playsinline", true);
+                video.setAttribute("muted", true);
+                video.setAttribute("autoplay", true);
+                await video.play();
+                isCameraStreamRunning = true;
+
+                function frameRenderProcessingLoop() {
+                    if (video.videoWidth === 0 || video.videoHeight === 0) {
+                        requestAnimationFrame(frameRenderProcessingLoop);
+                        return;
+                    }
+                    if(viewCanvas.width !== video.videoWidth) { 
+                        viewCanvas.width = video.videoWidth; 
+                        viewCanvas.height = video.videoHeight; 
+                    }
+                    
+                    parseCameraImageWithEngine(video, viewCanvas, ctx);
+                    requestAnimationFrame(frameRenderProcessingLoop);
+                }
+                requestAnimationFrame(frameRenderProcessingLoop);
+            } catch (err) { 
+                console.error("Camera parameters locked out, trying universal driver hook:", err);
+                try {
+                    const fallbackStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
+                    video.srcObject = fallbackStream;
+                    isCameraStreamRunning = true;
+                } catch(fErr) {
+                    alert("Camera blocked. Please clear address bar permissions and change settings to ALLOW."); 
+                }
+            }
+        }
+
+        function extractObjectValueByNormalizedKey(rowObject, targetedKeyString) {
+            const cleanTarget = targetedKeyString.toLowerCase().replace(/[^a-z0-9]/g, '');
+            for (let key in rowObject) { if (key.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanTarget) return rowObject[key]; }
+            return null;
+        }
+
+        function processRosterUpload() {
+            const input = document.getElementById('roster-file-input');
+            if(!input.files.length) { alert("Select roster file."); return; }
+            const file = input.files[0]; const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result); const workbook = XLSX.read(data, {type: 'array'});
+                    const jsonRows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                    db.transaction('rw', db.roster, async () => {
+                        for(let row of jsonRows) {
+                            const nameVal = extractObjectValueByNormalizedKey(row, 'name') || extractObjectValueByNormalizedKey(row, 'studentname');
+                            const idVal = extractObjectValueByNormalizedKey(row, 'id') || extractObjectValueByNormalizedKey(row, 'markerid');
+                            const markerId = parseInt(idVal);
+                            if(nameVal && !isNaN(markerId) && markerId >= 0 && markerId <= 249) {
+                                await db.roster.put({ markerId: markerId, name: nameVal.toString().trim() });
+                            }
+                        }
+                    }).then(() => { input.value = ''; loadRosterCards(); alert("Roster loaded."); });
+                } catch(err) { alert("Spreadsheet parse failure: " + err.message); }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function processQuestionsUpload() {
+            const folderId = parseInt(document.getElementById('bulk-target-folder').value);
+            const input = document.getElementById('questions-file-input');
+            if(!folderId || !input.files.length) { alert("Check arguments."); return; }
+            const file = input.files[0]; const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result); const workbook = XLSX.read(data, {type: 'array'});
+                    const jsonRows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                    db.transaction('rw', db.questions, async () => {
+                        for(let row of jsonRows) {
+                            const question = extractObjectValueByNormalizedKey(row, 'question') || extractObjectValueByNormalizedKey(row, 'questiontext');
+                            const a = extractObjectValueByNormalizedKey(row, 'a') || extractObjectValueByNormalizedKey(row, 'choicea');
+                            const b = extractObjectValueByNormalizedKey(row, 'b') || extractObjectValueByNormalizedKey(row, 'choiceb');
+                            const c = extractObjectValueByNormalizedKey(row, 'c') || extractObjectValueByNormalizedKey(row, 'choicec');
+                            const d = extractObjectValueByNormalizedKey(row, 'd') || extractObjectValueByNormalizedKey(row, 'choiced');
+                            let correct = extractObjectValueByNormalizedKey(row, 'correctanswer') || extractObjectValueByNormalizedKey(row, 'correct') || "";
+                            correct = correct.toString().trim().toUpperCase();
+                            if(question && a && b && c && d && ["A","B","C","D"].includes(correct)) {
+                                await db.questions.add({
+                                    quizId: folderId, question: question.toString().trim(), choiceA: a.toString().trim(), choiceB: b.toString().trim(), choiceC: c.toString().trim(), choiceD: d.toString().trim(), correctAnswer: correct
+                                });
+                            }
+                        }
+                    }).then(() => { input.value = ''; loadQuizDirectory(); alert("Questions imported."); });
+                } catch(err) { alert("Spreadsheet error: " + err.message); }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        async function saveManualStudent() {
+            const nameEl = document.getElementById('manual-student-name'); const idEl = document.getElementById('manual-marker-id');
+            const name = nameEl.value.trim(); const id = parseInt(idEl.value);
+            if(!name || isNaN(id) || id < 0 || id > 249) { alert("Provide a name and ID from 0 to 249."); return; }
+            await db.roster.put({ markerId: id, name: name }); nameEl.value = ''; idEl.value = ''; loadRosterCards();
+        }
+
+        async function saveManualQuestion() {
+            const folderId = parseInt(document.getElementById('manual-target-folder').value);
+            const questionText = document.getElementById('mq-text').value.trim();
+            const a = document.getElementById('mq-a').value.trim(); const b = document.getElementById('mq-b').value.trim();
+            const c = document.getElementById('mq-c').value.trim(); const d = document.getElementById('mq-d').value.trim();
+            const correct = document.getElementById('mq-correct').value;
+            if(!folderId || !questionText || !a || !b || !c || !d || !correct) { alert("Complete fields."); return; }
+            await db.questions.add({ quizId: folderId, question: questionText, choiceA: a, choiceB: b, choiceC: c, choiceD: d, correctAnswer: correct });
+            document.getElementById('mq-text').value = ''; document.getElementById('mq-a').value = ''; document.getElementById('mq-b').value = ''; document.getElementById('mq-c').value = ''; document.getElementById('mq-d').value = ''; document.getElementById('mq-correct').value = '';
+            loadQuizDirectory();
+        }
+
+        async function saveQuizFolder() {
+            const el = document.getElementById('quiz-folder-title'); const title = el.value.trim(); if(!title) return;
+            await db.quizzes.add({ title: title }); el.value = ''; syncFolderDropdowns(); loadQuizDirectory();
+        }
+
+        async function removeStudentProfile(markerId) { await db.roster.delete(markerId); loadRosterCards(); }
+        async function removeQuizFolder(quizId) { await db.quizzes.delete(quizId); await db.questions.where('quizId').equals(quizId).delete(); syncFolderDropdowns(); loadQuizDirectory(); }
+
+        async function syncFolderDropdowns() {
+            const dropdowns = document.querySelectorAll('.folder-dropdown-sync'); const folders = await db.quizzes.toArray();
+            dropdowns.forEach(drop => {
+                drop.innerHTML = '<option value="">-- Choose Quiz Destination --</option>';
+                folders.forEach(f => { drop.innerHTML += `<option value="${f.id}">${f.title}</option>`; });
+            });
+        }
+
+        async function loadQuizDirectory() {
+            const container = document.getElementById('quiz-directory'); const list = await db.quizzes.toArray();
+            if(list.length === 0) { container.innerHTML = `<div class="text-xs text-gray-400 italic text-center p-4 border border-dashed rounded-lg">No active tracks.</div>`; return; }
+            container.innerHTML = '';
+            for(let q of list) {
+                const count = await db.questions.where('quizId').equals(q.id).count();
+                container.innerHTML += `
+                    <div class="p-3 bg-slate-50 border rounded-xl flex justify-between items-center shadow-sm text-xs fade-in-item">
+                        <div><h4 class="font-bold text-gray-800">📁 ${q.title}</h4><span class="text-gray-400 font-medium">${count} questions</span></div>
+                        <div class="flex gap-1">
+                            ${count > 0 ? `<button onclick="launchQuizEvaluationRunner(${q.id}, '${q.title}')" class="bg-indigo-600 text-white font-bold px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition shadow-sm">Launch Quiz 🚀</button>` : `<span class="bg-gray-200 text-gray-400 px-2 py-1.5 rounded-lg font-medium">Empty</span>`}
+                            <button onclick="removeQuizFolder(${q.id})" class="text-red-600 hover:bg-red-50 border border-red-200 px-2 py-1.5 rounded-lg font-medium transition">Delete</button>
+                        </div>
+                    </div>`;
+            }
+        }
+
+        async function launchQuizEvaluationRunner(quizId, quizTitle) {
+            activeQuizFolderId = quizId;
+            activeQuestionsArray = await db.questions.where('quizId').equals(quizId).toArray();
+            questionCursorIndex = 0;
+            switchTab('play-tab');
+            initializeQuestionPhase1View();
+            initializeCameraHardwareDecoderStream();
+        }
+
+        function exitFullscreenQuizArena() {
+            armScannerEngineChannel(false);
+            switchTab('quiz-tab');
+        }
+
+        function initializeQuestionPhase1View() {
+            armScannerEngineChannel(false);
+            questionLoggedIdsSet.clear();
+            questionAnswersBufferMap = {};
+            document.getElementById('p2-log-stream').innerHTML = '<span class="text-slate-500 italic">No markers read yet...</span>';
+            document.getElementById('p2-live-counter').innerText = "0 Responses Ingested";
+            document.getElementById('arena-phase-1').classList.remove('hidden');
+            document.getElementById('arena-phase-2').classList.add('hidden');
+            document.getElementById('arena-phase-3').classList.add('hidden');
+
+            const currentQ = activeQuestionsArray[questionCursorIndex];
+            document.getElementById('p1-title-card').innerText = `QUESTION ${questionCursorIndex + 1} OF ${activeQuestionsArray.length}`;
+            document.getElementById('p1-question-text').innerText = currentQ.question;
+            document.getElementById('p1-a').innerText = `A: ${currentQ.choiceA}`;
+            document.getElementById('p1-b').innerText = `B: ${currentQ.choiceB}`;
+            document.getElementById('p1-c').innerText = `C: ${currentQ.choiceC}`;
+            document.getElementById('p1-d').innerText = `D: ${currentQ.choiceD}`;
+        }
+
+        function transitionToPhase2() {
+            document.getElementById('arena-phase-1').classList.add('hidden');
+            document.getElementById('arena-phase-2').classList.remove('hidden');
+            document.getElementById('arena-phase-3').classList.add('hidden');
+            armScannerEngineChannel(true);
+        }
+
+        function armScannerEngineChannel(armBoolean) {
+            isScannerArmed = armBoolean;
+            if(!isScannerArmed && isTryScanRunning) toggleTryScanEngine();
+        }
+
+        async function transitionToPhase3() {
+            armScannerEngineChannel(false);
+            document.getElementById('arena-phase-1').classList.add('hidden');
+            document.getElementById('arena-phase-2').classList.add('hidden');
+            document.getElementById('arena-phase-3').classList.remove('hidden');
+
+            if(questionLoggedIdsSet.size === 0) {
+                document.getElementById('p3-analytics-bars-box').innerHTML = '<div class="text-slate-400 text-center italic text-sm py-8">Zero responses recorded.</div>';
+                return;
+            }
+
+            const currentQ = activeQuestionsArray[questionCursorIndex];
+            document.getElementById('p3-question-title-fallback').innerText = currentQ.question;
+            
+            let tallies = { A: 0, B: 0, C: 0, D: 0 };
+            for(let id in questionAnswersBufferMap) {
+                let letter = questionAnswersBufferMap[id];
+                if(tallies[letter] !== undefined) tallies[letter]++;
+                if(letter === currentQ.correctAnswer) {
+                    const profile = await db.roster.get(parseInt(id));
+                    if(profile) {
+                        let scoreObj = await db.scores.get(profile.name) || { studentName: profile.name, score: 0 };
+                        scoreObj.score += 1; await db.scores.put(scoreObj);
+                    }
+                }
+            }
+
+            const total = questionLoggedIdsSet.size;
+            document.getElementById('p3-analytics-bars-box').innerHTML = Object.keys(tallies).map(letter => {
+                const percent = Math.round((tallies[letter] / total) * 100) || 0;
+                const isCorrect = letter === currentQ.correctAnswer;
+                return `
+                    <div class="text-xs font-semibold">
+                        <div class="flex justify-between text-slate-300 mb-1">
+                            <span class="${isCorrect ? 'text-green-400 font-black' : ''}">Choice ${letter} ${isCorrect ? '✓' : ''}</span>
+                            <span>${tallies[letter]} entries (${percent}%)</span>
+                        </div>
+                        <div class="w-full bg-slate-900 h-3 rounded-full overflow-hidden border border-slate-800">
+                            <div class="h-full ${isCorrect ? 'bg-green-500' : 'bg-indigo-500'}" style="width: ${percent}%"></div>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+
+        function stepToNextQuestion() {
+            if(questionCursorIndex + 1 < activeQuestionsArray.length) {
+                questionCursorIndex++;
+                initializeQuestionPhase1View();
+            } else {
+                alert("Final question reached."); exitFullscreenQuizArena(); switchTab('summary-tab');
+            }
+        }
+
+        async function toggleTryScanEngine() {
+            const btn = document.getElementById('ctrl-try-scan');
+            if(isTryScanRunning) {
+                isTryScanRunning = false; clearInterval(tryScanTimerInterval);
+                btn.innerText = "🔬 SIMULATOR"; btn.className = "bg-cyan-600/90 text-white px-3 py-1.5 text-xs font-bold rounded-full hover:bg-cyan-500";
+            } else {
+                const rosterList = await db.roster.toArray();
+                if(rosterList.length === 0) { alert("Please seed student profiles first."); return; }
+                isTryScanRunning = true; btn.innerText = "🛑 STOP SIM"; btn.className = "bg-red-500 text-white px-3 py-1.5 text-xs font-bold rounded-full animate-pulse";
+                tryScanTimerInterval = setInterval(() => {
+                    const remaining = rosterList.filter(s => !questionLoggedIdsSet.has(s.markerId));
+                    if(remaining.length === 0) { clearInterval(tryScanTimerInterval); toggleTryScanEngine(); return; }
+                    const target = remaining[Math.floor(Math.random() * remaining.length)];
+                    const choices = ["A", "B", "C", "D"]; 
+                    registerScannedAnswerTelemetryPacket(target.markerId, choices[Math.floor(Math.random() * 4)]);
+                }, 1000);
+            }
+        }
+
+        async function displayMasterLeaderboard() {
+            const container = document.getElementById('master-leaderboard-view'); const scoresList = await db.scores.toArray();
+            const ranked = scoresList.sort((x, y) => y.score - x.score);
+            if(ranked.length === 0) { container.innerHTML = `<div class="text-xs text-gray-400 italic text-center p-8 bg-slate-50 border border-dashed rounded-xl">No leaderboard data found yet.</div>`; return; }
+            container.innerHTML = ranked.map((record, index) => `
+                <div class="p-3 bg-white border border-slate-200 rounded-xl flex justify-between items-center text-xs shadow-sm max-w-sm mx-auto font-medium mb-1.5 fade-in-item">
+                    <div class="flex items-center gap-2"><span class="font-extrabold text-slate-400 text-sm">#${index + 1}</span><span class="text-slate-800 font-bold text-sm">${record.studentName}</span></div>
+                    <span class="bg-purple-100 text-purple-700 font-extrabold px-3 py-1 rounded-full text-[11px]">${record.score} Points</span>
+                </div>`).join('');
+        }
+
+        async function purgeLeaderboardMetrics() { await db.scores.clear(); displayMasterLeaderboard(); }
+
+        window.addEventListener('DOMContentLoaded', () => { syncFolderDropdowns(); loadQuizDirectory(); loadRosterCards(); });
     </script>
 </body>
 </html>
