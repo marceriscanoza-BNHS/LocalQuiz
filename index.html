@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Instant ArUco Scanner Test</title>
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/jsaruco@1.0.0/src/cv.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsaruco@1.0.0/src/aruco.js"></script>
 </head>
-<body class="bg-slate-950 text-slate-100 font-sans min-h-screen p-4 flex flex-col items-center justify-center">
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen p-4 flex flex-col items-center justify-center select-none">
 
     <div class="w-full max-w-xl bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl">
         <div class="mb-4 text-center">
@@ -21,12 +21,16 @@
         <div class="relative aspect-video bg-black rounded-xl overflow-hidden border-2 border-indigo-500/30 mb-4">
             <video id="video-stream" class="absolute inset-0 w-full h-full object-cover" autoplay playsinline muted></video>
             <canvas id="overlay-canvas" class="absolute inset-0 w-full h-full object-cover z-10"></canvas>
+            
+            <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                <div class="w-32 h-32 border border-dashed border-indigo-400/20 rounded-lg"></div>
+            </div>
         </div>
 
         <div class="bg-slate-950 rounded-xl p-4 border border-slate-800 font-mono text-xs space-y-1">
             <div class="flex justify-between items-center text-slate-400 border-b border-slate-800 pb-2 mb-2 font-sans font-bold">
                 <span>TELEMETRY PACKET</span>
-                <span id="scan-status" class="text-amber-400 animate-pulse">● WAITING FOR SQUARES</span>
+                <span id="scan-status" class="text-amber-400 animate-pulse">● INITIALIZING CAMERA</span>
             </div>
             <div>Marker ID Detected: <span id="log-id" class="text-white font-bold">--</span></div>
             <div>Parsed Student Choice: <span id="log-choice" class="text-emerald-400 font-black text-sm">--</span></div>
@@ -44,34 +48,62 @@
             // Initialize the lightweight detector instance
             detector = new AR.Detector();
 
+            // Explicit configuration setup targeting mobile environment lenses
+            const hardwareConstraints = {
+                audio: false,
+                video: {
+                    facingMode: { ideal: "environment" }, // Forces back camera on phones
+                    width: { ideal: 640 },
+                    height: { ideal: 480 }
+                }
+            };
+
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    audio: false, video: { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 480 } }
-                });
+                const stream = await navigator.mediaDevices.getUserMedia(hardwareConstraints);
                 video.srcObject = stream;
+                
+                // Force inline mobile viewing via programmatic attributes
+                video.setAttribute("playsinline", true);
+                video.setAttribute("webkit-playsinline", true);
+                video.setAttribute("muted", true);
+                video.setAttribute("autoplay", true);
+
                 video.addEventListener('loadedmetadata', () => {
                     canvas.width = video.videoWidth;
                     canvas.height = video.videoHeight;
+                    document.getElementById('scan-status').innerText = "● WAITING FOR SQUARES";
                     requestAnimationFrame(scanLoop);
                 });
             } catch (err) {
-                alert("Camera error: " + err.message);
+                console.error("Primary environment camera failed, attempting universal fallback:", err);
+                // Secondary Fallback Attempt: Ask for generic user video stream if environment parameter locks
+                try {
+                    const fallbackStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
+                    video.srcObject = fallbackStream;
+                    video.setAttribute("playsinline", true);
+                    video.setAttribute("muted", true);
+                    video.setAttribute("autoplay", true);
+                } catch (fallbackErr) {
+                    alert("Camera Access Error: Please make sure you are loading via HTTPS and have granted site permissions.");
+                    document.getElementById('scan-status').innerText = "❌ CAMERA BLOCKED";
+                    document.getElementById('scan-status').className = "text-red-500 font-bold";
+                }
             }
         }
 
         function scanLoop() {
             if (video.readyState === video.HAVE_CURRENT_DATA) {
-                // Copy video frame pixels straight to canvas
+                // Copy video frame pixels straight to canvas layout
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                 
-                // Extract image pixel matrix data
+                // Extract clean image pixel matrix data
                 const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 
                 // Run the square-marker detection pass
                 const markers = detector.detect(imageData);
 
                 if (markers.length > 0) {
-                    const marker = markers[0]; // Focus tracking on the first visible square
+                    const marker = markers[0]; // Focus tracking on the first visible square marker
                     
                     // The corner array indexes tell us exactly how the square is tilted in space.
                     // We calculate the delta vector between corner 0 and corner 1 to locate "UP".
@@ -79,10 +111,10 @@
                     let yDiff = marker.corners[1].y - marker.corners[0].y;
                     let angle = Math.atan2(yDiff, xDiff) * (180 / Math.PI);
 
-                    // Normalize angle to 0-360 range
+                    // Normalize angle to clean 0-360 range
                     if (angle < 0) angle += 360;
 
-                    // Map 90-degree rotations to letter options
+                    // Map 90-degree rotations to letter choices
                     let choice = "A";
                     if (angle > 45 && angle <= 135) choice = "B";
                     else if (angle > 135 && angle <= 225) choice = "C";
@@ -94,9 +126,9 @@
                     document.getElementById('log-id').innerText = marker.id;
                     document.getElementById('log-choice').innerText = choice;
 
-                    // Draw a visual box outline around the detected target card
+                    // Draw a visual box outline around the detected target card corners
                     ctx.strokeStyle = "#10b981";
-                    ctx.lineWidth = 3;
+                    ctx.lineWidth = 4;
                     ctx.beginPath();
                     ctx.moveTo(marker.corners[0].x, marker.corners[0].y);
                     for (let c = 1; c < 4; c++) {
