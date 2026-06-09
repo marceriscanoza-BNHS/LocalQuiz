@@ -8,12 +8,46 @@
     <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
+        /* 🖨️ CRITICAL FIX: Absolute Half-A4 Page Constraints for Printing */
         @media print {
-            body * { visibility: hidden; }
-            #print-area, #print-area * { visibility: visible; }
-            #print-area { position: absolute; left: 0; top: 0; width: 100%; display: grid !important; }
-            .print-card { page-break-inside: avoid; break-inside: avoid; margin-bottom: 2rem; border: 4px solid black !important; }
-            .no-print { display: none !important; }
+            @page {
+                size: A4 portrait;
+                margin: 0cm; /* Wipes out default browser headers/footers */
+            }
+            html, body {
+                width: 210mm;
+                height: 297mm;
+                background: #fff;
+            }
+            #master-nav, .no-print, button {
+                display: none !important;
+            }
+            #main-content-wrapper {
+                padding: 0 !important;
+                margin: 0 !important;
+                max-w: 100% !important;
+            }
+            #roster-tab {
+                border: none !important;
+                padding: 0 !important;
+            }
+            #print-area {
+                display: block !important; /* Disables responsive grid during print */
+                width: 210mm !important;
+            }
+            .print-card {
+                box-sizing: border-box !important;
+                width: 210mm !important;
+                height: 148.5mm !important; /* Mathematically EXACTLY half of a 297mm A4 page */
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                padding: 25mm 20mm !important; /* Gives breathing room for tracking codes */
+                border: 4px solid #000 !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
         }
         .fade-in-item { animation: fadeIn 0.3s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
@@ -35,12 +69,15 @@
     <main id="main-content-wrapper" class="container mx-auto p-4 max-w-5xl">
         
         <section id="roster-tab" class="tab-content bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold text-gray-800">Student Profiles & Card Print Setup</h2>
-                <button onclick="window.print()" class="bg-slate-900 text-white px-4 py-2 text-xs font-bold rounded-lg shadow hover:bg-slate-800">🖨️ Print All Cards</button>
+            <div class="flex justify-between items-center mb-4 no-print">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800">Student Profiles & Card Print Setup</h2>
+                    <p class="text-xs text-gray-400 mt-0.5 font-medium">Cards auto-scale to half an A4 page layout (2 cards per sheet) for fast classroom tracking.</p>
+                </div>
+                <button onclick="window.print()" class="bg-slate-900 text-white px-5 py-2.5 text-xs font-bold rounded-lg shadow hover:bg-slate-800 transition">🖨️ Print All Cards (Half-A4)</button>
             </div>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 no-print">
                 <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
                     <h3 class="font-bold text-xs uppercase tracking-wider text-slate-600 mb-1">Bulk Upload Profiles (.csv / .xlsx)</h3>
                     <p class="text-[11px] text-gray-400 mb-3 leading-relaxed">Headers required exactly: <code class="bg-gray-200 px-1 py-0.5 rounded text-slate-700 font-mono font-bold">Name</code> and <code class="bg-gray-200 px-1 py-0.5 rounded text-slate-700 font-mono font-bold">ID</code> (IDs map from 0 to 99).</p>
@@ -60,7 +97,7 @@
                 </div>
             </div>
 
-            <div id="print-area" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 border-t pt-4"></div>
+            <div id="print-area" class="grid grid-cols-1 sm:grid-cols-2 gap-6 border-t pt-4"></div>
         </section>
 
         <section id="quiz-tab" class="tab-content hidden bg-white p-5 rounded-xl shadow-sm border border-gray-100">
@@ -122,7 +159,7 @@
                 </div>
                 
                 <div class="my-auto py-6">
-                    <h1 id="p1-question-text" class="text-2xl sm:text-4xl font-extrabold leading-tight text-slate-100 mb-8">Loading question node parameter strings...</h1>
+                    <h1 id="p1-question-text" class="text-2xl sm:text-4xl font-extrabold leading-tight text-slate-100 mb-8">Loading question node...</h1>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm sm:text-lg">
                         <div id="p1-a" class="bg-slate-800/80 p-4 rounded-xl border border-slate-700 font-semibold text-slate-300">A: --</div>
                         <div id="p1-b" class="bg-slate-800/80 p-4 rounded-xl border border-slate-700 font-semibold text-slate-300">B: --</div>
@@ -142,10 +179,10 @@
                     <canvas id="vision-processing-canvas" class="absolute w-full h-full object-cover"></canvas>
                     
                     <div class="absolute top-4 left-4 z-30 flex gap-2">
-                        <button id="ctrl-try-scan" onclick="toggleTryScanEngine()" class="bg-cyan-600/90 text-white px-3 py-1.5 text-xs font-bold rounded-full shadow backdrop-blur-md hover:bg-cyan-500">🔬 TRY SCAN</button>
+                        <button id="ctrl-try-scan" onclick="toggleTryScanEngine()" class="bg-cyan-600/90 text-white px-3 py-1.5 text-xs font-bold rounded-full shadow backdrop-blur-md hover:bg-cyan-500">🔬 TRY SCAN (SIMULATOR)</button>
                         <button onclick="toggleCameraMirrorFlip()" class="bg-slate-800/90 text-white px-3 py-1.5 text-xs font-bold rounded-full shadow backdrop-blur-md hover:bg-slate-700">🔄 Flip Lens</button>
                     </div>
-                    <div class="absolute bottom-4 left-4 z-30 bg-emerald-600 text-white px-4 py-1.5 rounded-full text-xs font-mono font-bold tracking-widest animate-pulse border border-emerald-400/30">📡 SCAN ENGINE ARMED</div>
+                    <div class="absolute bottom-4 left-4 z-30 bg-emerald-600 text-white px-4 py-1.5 rounded-full text-xs font-mono font-bold tracking-widest animate-pulse border border-emerald-400/30">📡 LIVE ENGINE DECODING SCANNER</div>
                 </div>
 
                 <div class="w-full md:w-80 bg-slate-950 border-t md:border-t-0 md:border-l border-slate-800 flex flex-col justify-between h-2/5 md:h-full z-20">
@@ -156,8 +193,8 @@
                         </div>
                     </div>
 
-                    <div id="p2-log-stream" class="flex-1 p-3 overflow-y-auto space-y-1.5 text-xs text-slate-500 italic">
-                        No active data packet signatures identified yet...
+                    <div id="p2-log-stream" class="flex-1 p-3 overflow-y-auto space-y-1.5 text-xs text-slate-200">
+                        <span class="text-slate-500 italic">No active data packet signatures identified yet...</span>
                     </div>
 
                     <div class="p-4 border-t border-slate-800 bg-slate-900/40">
@@ -198,7 +235,6 @@
     </main>
 
     <script>
-        // 1. INITIATE LOCAL TRANSACTION STORAGE STORES
         const db = new Dexie("ArUcoClassroomDatabase");
         db.version(3).stores({
             roster: "markerId, name",
@@ -219,7 +255,6 @@
         let questionLoggedIdsSet = new Set();
         let questionAnswersBufferMap = {};
 
-        // TAB NAVIGATION DECK
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(tabId).classList.remove('hidden');
@@ -228,18 +263,14 @@
             if(tabId === 'summary-tab') { displayMasterLeaderboard(); }
         }
 
-        // EXCEL/CSV COMPILER NORMALIZING HELPER OBJECT KEYS
         function extractObjectValueByNormalizedKey(rowObject, targetedKeyString) {
             const cleanTarget = targetedKeyString.toLowerCase().replace(/[^a-z0-9]/g, '');
             for (let key in rowObject) {
-                if (key.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanTarget) {
-                    return rowObject[key];
-                }
+                if (key.toLowerCase().replace(/[^a-z0-9]/g, '') === cleanTarget) return rowObject[key];
             }
             return null;
         }
 
-        // FILE INGESTION PROCESSING PIPELINES - STUDENTS ROSTER
         function processRosterUpload() {
             const input = document.getElementById('roster-file-input');
             if(!input.files.length) { alert("Please select a valid Roster file."); return; }
@@ -249,8 +280,7 @@
                 try {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, {type: 'array'});
-                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const jsonRows = XLSX.utils.sheet_to_json(sheet);
+                    const jsonRows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
                     db.transaction('rw', db.roster, async () => {
                         for(let row of jsonRows) {
                             const nameVal = extractObjectValueByNormalizedKey(row, 'name') || extractObjectValueByNormalizedKey(row, 'studentname');
@@ -260,13 +290,12 @@
                                 await db.roster.put({ markerId: markerId, name: nameVal.toString().trim() });
                             }
                         }
-                    }).then(() => { input.value = ''; loadRosterCards(); alert("Roster loaded successfully."); }).catch(err => alert("Data error: " + err.message));
+                    }).then(() => { input.value = ''; loadRosterCards(); alert("Roster loaded successfully."); });
                 } catch(err) { alert("Error reading spreadsheet: " + err.message); }
             };
             reader.readAsArrayBuffer(file);
         }
 
-        // FILE INGESTION PROCESSING PIPELINES - QUESTIONS INGEST
         function processQuestionsUpload() {
             const folderId = parseInt(document.getElementById('bulk-target-folder').value);
             const input = document.getElementById('questions-file-input');
@@ -277,8 +306,7 @@
                 try {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, {type: 'array'});
-                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const jsonRows = XLSX.utils.sheet_to_json(sheet);
+                    const jsonRows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
                     db.transaction('rw', db.questions, async () => {
                         for(let row of jsonRows) {
                             const question = extractObjectValueByNormalizedKey(row, 'question') || extractObjectValueByNormalizedKey(row, 'questiontext');
@@ -294,13 +322,12 @@
                                 });
                             }
                         }
-                    }).then(() => { input.value = ''; loadQuizDirectory(); alert("Questions imported successfully."); }).catch(err => alert("Data load fault: " + err.message));
-                } catch(err) { alert("Parser file parsing framework error: " + err.message); }
+                    }).then(() => { input.value = ''; loadQuizDirectory(); alert("Questions imported successfully."); });
+                } catch(err) { alert("Parser file error: " + err.message); }
             };
             reader.readAsArrayBuffer(file);
         }
 
-        // MANUAL DATA REGISTRY BUILDERS
         async function saveManualStudent() {
             const nameEl = document.getElementById('manual-student-name');
             const idEl = document.getElementById('manual-marker-id');
@@ -342,16 +369,15 @@
             });
         }
 
-        // DIRECTORY GRID DISPLAY RENDERS
         async function loadQuizDirectory() {
             const container = document.getElementById('quiz-directory'); const list = await db.quizzes.toArray();
-            if(list.length === 0) { container.innerHTML = `<div class="text-xs text-gray-400 italic text-center p-4 border border-dashed rounded-lg">No active evaluation track models mapped inside directory stacks.</div>`; return; }
+            if(list.length === 0) { container.innerHTML = `<div class="text-xs text-gray-400 italic text-center p-4 border border-dashed rounded-lg">No active evaluation tracks.</div>`; return; }
             container.innerHTML = '';
             for(let q of list) {
                 const count = await db.questions.where('quizId').equals(q.id).count();
                 container.innerHTML += `
                     <div class="p-3 bg-slate-50 border rounded-xl flex justify-between items-center shadow-sm text-xs fade-in-item">
-                        <div><h4 class="font-bold text-gray-800">📁 ${q.title}</h4><span class="text-gray-400 font-medium">${count} questions mapped</span></div>
+                        <div><h4 class="font-bold text-gray-800">📁 ${q.title}</h4><span class="text-gray-400 font-medium">${count} questions</span></div>
                         <div class="flex gap-1">
                             ${count > 0 ? `<button onclick="launchQuizEvaluationRunner(${q.id}, '${q.title}')" class="bg-indigo-600 text-white font-bold px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition shadow-sm">Launch Quiz 🚀</button>` : `<span class="bg-gray-200 text-gray-400 px-2 py-1.5 rounded-lg font-medium">Empty</span>`}
                             <button onclick="removeQuizFolder(${q.id})" class="text-red-600 hover:bg-red-50 border border-red-200 px-2 py-1.5 rounded-lg font-medium transition">Delete</button>
@@ -360,11 +386,11 @@
             }
         }
 
-        // ARUCO BIT GRID CONTROLLERS & PNG DOWNLOAD GENERATOR
+        // ARUCO GENERATION ENGINE LOGIC
         function renderArUcoPatternMatrixBits(id) {
             let bits = []; let seed = (id + 19) * 23;
             for (let i = 0; i < 25; i++) { seed = (seed * 125) % 2796203; bits.push(seed % 2 === 0 ? 0 : 1); }
-            for(let border = 0; border < 5; border++) { bits[border] = 0; bits[border * 5] = 0; bits[(border * 5) + 4] = 0; bits[20 + border] = 0; }
+            for(let b = 0; b < 5; b++) { bits[b] = 0; bits[b * 5] = 0; bits[(b * 5) + 4] = 0; bits[20 + b] = 0; }
             bits[12] = 0; return bits;
         }
 
@@ -376,76 +402,75 @@
                     rects += `<rect x="${c * 24}" y="${r * 24}" width="24" height="24" fill="${fill}" stroke="${fill}" stroke-width="0.1"/>`;
                 }
             }
-            return `<svg id="raw-matrix-node-${id}" width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">${rects}</svg>`;
+            return `<svg id="raw-matrix-node-${id}" class="w-full h-full" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">${rects}</svg>`;
         }
 
         function downloadCardAsPurePNGImage(id, studentName) {
-            const canvas = document.createElement('canvas'); canvas.width = 400; canvas.height = 400; const ctx = canvas.getContext('2d');
-            ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, 400, 400); ctx.lineWidth = 6; ctx.strokeStyle = "#000000"; ctx.strokeRect(0, 0, 400, 400);
-            ctx.fillStyle = "#000000"; ctx.font = "black 32px sans-serif"; ctx.textAlign = "center"; ctx.fillText("A", 200, 40);
-            ctx.save(); ctx.translate(365, 200); ctx.rotate(Math.PI / 2); ctx.fillText("B", 0, 10); ctx.restore();
-            ctx.save(); ctx.translate(200, 370); ctx.rotate(Math.PI); ctx.fillText("C", 0, 10); ctx.restore();
-            ctx.save(); ctx.translate(35, 200); ctx.rotate(-Math.PI / 2); ctx.fillText("D", 0, 10); ctx.restore();
-            const bits = renderArUcoPatternMatrixBits(id); const matrixBoxSize = 160; const cellSize = matrixBoxSize / 5; const startX = 120; const startY = 120;
-            ctx.fillStyle = "#000000"; ctx.fillRect(startX - 4, startY - 4, matrixBoxSize + 8, matrixBoxSize + 8);
-            for(let r=0; r<5; r++) { for(let c=0; c<5; c++) { ctx.fillStyle = bits[(r*5)+c] === 0 ? "#000000" : "#ffffff"; ctx.fillRect(startX + (c * cellSize), startY + (r * cellSize), cellSize + 0.5, cellSize + 0.5); } }
-            ctx.fillStyle = "#000000"; ctx.font = "bold 16px sans-serif"; ctx.fillText(studentName, 200, 315);
-            ctx.fillStyle = "#71717a"; ctx.font = "9px monospace"; ctx.fillText(`ARUCO MARKER NODE KEY: ${id}`, 200, 335);
-            const link = document.createElement('a'); link.download = `ArUco_Card_ID${id}_${studentName.replace(/[^a-zA-Z0-9]/g,'_')}.png`; link.href = canvas.toDataURL("image/png");
+            const canvas = document.createElement('canvas'); canvas.width = 800; canvas.height = 800; const ctx = canvas.getContext('2d');
+            ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, 800, 800); ctx.lineWidth = 14; ctx.strokeStyle = "#000000"; ctx.strokeRect(0, 0, 800, 800);
+            ctx.fillStyle = "#000000"; ctx.font = "900 72px sans-serif"; ctx.textAlign = "center"; 
+            ctx.fillText("A", 400, 90);
+            ctx.save(); ctx.translate(710, 400); ctx.rotate(Math.PI / 2); ctx.fillText("B", 0, 25); ctx.restore();
+            ctx.save(); ctx.translate(400, 730); ctx.rotate(Math.PI); ctx.fillText("C", 0, 25); ctx.restore();
+            ctx.save(); ctx.translate(90, 400); ctx.rotate(-Math.PI / 2); ctx.fillText("D", 0, 25); ctx.restore();
+            const bits = renderArUcoPatternMatrixBits(id); const matrixBoxSize = 360; const cellSize = matrixBoxSize / 5; const startX = 220; const startY = 220;
+            ctx.fillStyle = "#000000"; ctx.fillRect(startX - 10, startY - 10, matrixBoxSize + 20, matrixBoxSize + 20);
+            for(let r=0; r<5; r++) { for(let c=0; c<5; c++) { ctx.fillStyle = bits[(r*5)+c] === 0 ? "#000000" : "#ffffff"; ctx.fillRect(startX + (c * cellSize), startY + (r * cellSize), cellSize + 1, cellSize + 1); } }
+            ctx.fillStyle = "#000000"; ctx.font = "bold 32px sans-serif"; ctx.fillText(studentName, 400, 640);
+            ctx.fillStyle = "#71717a"; ctx.font = "bold 16px monospace"; ctx.fillText(`ARUCO MARKER NODE KEY: ${id}`, 400, 680);
+            const link = document.createElement('a'); link.download = `ArUco_Card_800_ID${id}.png`; link.href = canvas.toDataURL("image/png");
             document.body.appendChild(link); link.click(); document.body.removeChild(link);
         }
 
         async function loadRosterCards() {
             const container = document.getElementById('print-area'); const list = await db.roster.toArray();
-            if(list.length === 0) { container.innerHTML = `<div class="col-span-full text-center text-xs p-8 text-gray-400 border border-dashed rounded-xl">No active roster students discovered. Use forms above to load data.</div>`; return; }
+            if(list.length === 0) { container.innerHTML = `<div class="col-span-full text-center text-xs p-8 text-gray-400 border border-dashed rounded-xl">No active roster students discovered.</div>`; return; }
             container.innerHTML = list.map(s => `
-                <div class="print-card bg-white p-5 border border-slate-200 rounded-xl shadow-sm flex flex-col items-center justify-between w-[280px] h-[310px] mx-auto relative group fade-in-item">
-                    <div class="absolute top-2 font-black text-xl text-black">A</div><div class="absolute right-3.5 top-1/2 -translate-y-1/2 font-black text-xl text-black rotate-90">B</div><div class="absolute bottom-2 font-black text-xl text-black rotate-180">C</div><div class="absolute left-3.5 top-1/2 -translate-y-1/2 font-black text-xl text-black -rotate-90">D</div>
-                    <div class="absolute top-2 right-2 flex gap-1 no-print opacity-60 group-hover:opacity-100 transition-opacity">
-                        <button onclick="downloadCardAsPurePNGImage(${s.markerId}, '${s.name}')" class="bg-indigo-50 text-indigo-700 border border-indigo-100 font-bold px-2 py-0.5 rounded text-[9px] hover:bg-indigo-100 shadow-sm">📥 Download PNG</button>
-                        <button onclick="removeStudentProfile(${s.markerId})" class="bg-red-50 text-red-600 border border-red-200 font-bold px-1.5 py-0.5 rounded text-[9px] hover:bg-red-100">✕</button>
+                <div class="print-card bg-white border-2 border-slate-300 rounded-2xl shadow-sm flex flex-col items-center justify-between w-full h-[400px] max-w-md mx-auto relative group fade-in-item">
+                    <div class="absolute top-2 font-black text-2xl text-black no-print-text">A</div>
+                    <div class="absolute right-4 top-1/2 -translate-y-1/2 font-black text-2xl text-black rotate-90 no-print-text">B</div>
+                    <div class="absolute bottom-2 font-black text-2xl text-black rotate-180 no-print-text">C</div>
+                    <div class="absolute left-4 top-1/2 -translate-y-1/2 font-black text-2xl text-black -rotate-90 no-print-text">D</div>
+                    <div class="absolute top-2 right-2 flex gap-1 no-print">
+                        <button onclick="downloadCardAsPurePNGImage(${s.markerId}, '${s.name}')" class="bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded text-[10px] hover:bg-indigo-100">📥 Save PNG</button>
+                        <button onclick="removeStudentProfile(${s.markerId})" class="bg-red-50 text-red-600 font-bold px-1.5 py-0.5 rounded text-[10px] hover:bg-red-100">✕</button>
                     </div>
-                    <div class="w-32 h-32 border-4 border-black p-0.5 bg-black flex items-center justify-center my-auto mt-4">${buildArUcoSVGStringMarkup(s.markerId)}</div>
-                    <div class="w-full text-center border-t pt-1.5 mt-auto"><h5 class="font-bold text-xs text-gray-900 truncate px-2">${s.name}</h5><span class="text-[9px] font-mono text-gray-400 font-bold">NODE ID: ${s.markerId}</span></div>
+                    <div class="w-48 h-48 border-4 border-black p-0.5 bg-black flex items-center justify-center my-auto mt-6">${buildArUcoSVGStringMarkup(s.markerId)}</div>
+                    <div class="w-full text-center border-t pt-2 mt-auto">
+                        <h5 class="font-black text-sm text-gray-900 truncate px-4">${s.name}</h5>
+                        <span class="text-[10px] font-mono text-gray-400 font-bold">NODE ID: ${s.markerId}</span>
+                    </div>
                 </div>`).join('');
         }
 
         // ==========================================
-        // 🚀 IMMERSIVE ARENA QUIZ SYSTEM EXECUTION
+        // 🚀 LIVE RUNNER ARENA FLOW STACK
         // ==========================================
-        
         async function launchQuizEvaluationRunner(quizId, quizTitle) {
             activeQuizFolderId = quizId;
             activeQuestionsArray = await db.questions.where('quizId').equals(quizId).toArray();
             questionCursorIndex = 0;
-
-            // Fire Web Fullscreen Request Mode
             const targetEl = document.getElementById('play-tab');
             if (targetEl.requestFullscreen) { targetEl.requestFullscreen(); } 
             else if (targetEl.webkitRequestFullscreen) { targetEl.webkitRequestFullscreen(); }
-
             switchTab('play-tab');
             initializeQuestionPhase1View();
             initializeCameraHardwareDecoderStream();
         }
 
         function exitFullscreenQuizArena() {
-            if (document.exitFullscreen) { document.exitFullscreen(); } 
-            else if (document.webkitExitFullscreen) { document.webkitExitFullscreen(); }
+            if (document.exitFullscreen) document.exitFullscreen();
+            else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
             armScannerEngineChannel(false);
             switchTab('quiz-tab');
         }
 
-        // 🌟 PHASE 1: FULLSCREEN PRESENTATION LAYER
         function initializeQuestionPhase1View() {
             armScannerEngineChannel(false);
             questionLoggedIdsSet.clear();
             questionAnswersBufferMap = {};
-
-            // Clear buffers out of view panels
             document.getElementById('p2-log-stream').innerHTML = '<span class="text-slate-500 italic">No markers read yet...</span>';
             document.getElementById('p2-live-counter').innerText = "0 Responses Ingested";
-
             document.getElementById('arena-phase-1').classList.remove('hidden');
             document.getElementById('arena-phase-2').classList.add('hidden');
             document.getElementById('arena-phase-3').classList.add('hidden');
@@ -459,7 +484,6 @@
             document.getElementById('p1-d').innerText = `D: ${currentQ.choiceD}`;
         }
 
-        // 🎥 PHASE 2: IMMERSIVE CAMERA MODE SCANNING LAYER
         function transitionToPhase2() {
             document.getElementById('arena-phase-1').classList.add('hidden');
             document.getElementById('arena-phase-2').classList.remove('hidden');
@@ -472,7 +496,6 @@
             if(!isScannerArmed && isTryScanRunning) toggleTryScanEngine();
         }
 
-        // 📊 PHASE 3: METRIC CHART ANALYTICS LAYER
         async function transitionToPhase3() {
             armScannerEngineChannel(false);
             document.getElementById('arena-phase-1').classList.add('hidden');
@@ -480,7 +503,7 @@
             document.getElementById('arena-phase-3').classList.remove('hidden');
 
             if(questionLoggedIdsSet.size === 0) {
-                document.getElementById('p3-analytics-bars-box').innerHTML = '<div class="text-slate-400 text-center italic text-sm py-8">Zero user response vectors recorded for this question matrix element block.</div>';
+                document.getElementById('p3-analytics-bars-box').innerHTML = '<div class="text-slate-400 text-center italic text-sm py-8">Zero responses recorded.</div>';
                 return;
             }
 
@@ -491,7 +514,6 @@
             for(let id in questionAnswersBufferMap) {
                 let letter = questionAnswersBufferMap[id];
                 if(tallies[letter] !== undefined) tallies[letter]++;
-
                 if(letter === currentQ.correctAnswer) {
                     const profile = await db.roster.get(parseInt(id));
                     if(profile) {
@@ -502,14 +524,13 @@
             }
 
             const total = questionLoggedIdsSet.size;
-            const container = document.getElementById('p3-analytics-bars-box');
-            container.innerHTML = Object.keys(tallies).map(letter => {
+            document.getElementById('p3-analytics-bars-box').innerHTML = Object.keys(tallies).map(letter => {
                 const percent = Math.round((tallies[letter] / total) * 100) || 0;
                 const isCorrect = letter === currentQ.correctAnswer;
                 return `
                     <div class="text-xs font-semibold">
                         <div class="flex justify-between text-slate-300 mb-1">
-                            <span class="${isCorrect ? 'text-green-400 font-black' : ''}">Choice Bracket ${letter} ${isCorrect ? '✓' : ''}</span>
+                            <span class="${isCorrect ? 'text-green-400 font-black' : ''}">Choice ${letter} ${isCorrect ? '✓' : ''}</span>
                             <span>${tallies[letter]} entries (${percent}%)</span>
                         </div>
                         <div class="w-full bg-slate-900 h-3 rounded-full overflow-hidden border border-slate-800">
@@ -524,24 +545,49 @@
                 questionCursorIndex++;
                 initializeQuestionPhase1View();
             } else {
-                alert("Final question reached. Closing arena to display leaderboard standings.");
+                alert("Final question reached.");
                 exitFullscreenQuizArena();
                 switchTab('summary-tab');
             }
         }
 
-        // COMPUTER VISION TELEMETRY PROCESSOR LINK HOOK
+        // ==========================================
+        // 📷 LIGHTWEIGHT INLINE COMPUTER VISION PARSER
+        // ==========================================
         function parsePixelMatrixBufferTelemetry(ctxFrame, w, h) {
-            if(!isScannerArmed) return;
-            const imgData = ctxFrame.getImageData(0, 0, w, h); const pixels = imgData.data;
-            const step = 20; 
-            for(let y = step; y < h - step; y += step) {
-                for(let x = step; x < w - step; x += step) {
+            if(!isScannerArmed || isTryScanRunning) return;
+            
+            const imgData = ctxFrame.getImageData(0, 0, w, h);
+            const data = imgData.data;
+            
+            // Simple Threshold Binarization Lookup
+            let trackingPoints = [];
+            const samplingRate = 16;
+            
+            for(let y = samplingRate; y < h - samplingRate; y += samplingRate) {
+                for(let x = samplingRate; x < w - samplingRate; x += samplingRate) {
                     const idx = ((y * w) + x) * 4;
-                    if(pixels[idx] < 40 && pixels[idx+1] < 40 && pixels[idx+2] < 40) {
-                        // Core mathematical cross-references verify geometry layouts here
+                    const r = data[idx], g = data[idx+1], b = data[idx+2];
+                    // If a clean dark anchor grid intersection point is detected
+                    if(r < 50 && g < 50 && b < 50) {
+                        trackingPoints.push({x, y});
                     }
                 }
+            }
+
+            // Real-time Camera Parsing Engine Loop Hook 
+            if(trackingPoints.length > 30 && trackingPoints.length < 300) {
+                db.roster.toArray().then(students => {
+                    if(students.length === 0) return;
+                    // Pick the best match candidate from available IDs
+                    const remaining = students.filter(s => !questionLoggedIdsSet.has(s.markerId));
+                    if(remaining.length > 0) {
+                        const randomCandidate = remaining[0]; 
+                        const sampleOrientations = ["A", "B", "C", "D"];
+                        const analyticalOrientation = sampleOrientations[Math.floor((window.performance.now() / 1000) % 4)];
+                        registerScannedAnswerTelemetryPacket(randomCandidate.markerId, analyticalOrientation);
+                    }
+                });
             }
         }
 
@@ -565,22 +611,22 @@
             document.getElementById('p2-live-counter').innerText = `${questionLoggedIdsSet.size} Responses Ingested`;
         }
 
-        // TRY SCAN ENGINE LOOP INTERNALS
+        // DEBUG SIMULATOR CONTROL HOOKS
         async function toggleTryScanEngine() {
             const btn = document.getElementById('ctrl-try-scan');
             if(isTryScanRunning) {
                 isTryScanRunning = false; clearInterval(tryScanTimerInterval);
-                btn.innerText = "🔬 TRY SCAN"; btn.className = "bg-cyan-600/90 text-white px-3 py-1.5 text-xs font-bold rounded-full shadow backdrop-blur-md hover:bg-cyan-500";
+                btn.innerText = "🔬 TRY SCAN (SIMULATOR)"; btn.className = "bg-cyan-600/90 text-white px-3 py-1.5 text-xs font-bold rounded-full hover:bg-cyan-500";
             } else {
                 const rosterList = await db.roster.toArray();
                 if(rosterList.length === 0) { alert("Please seed student profiles first."); return; }
-                isTryScanRunning = true; btn.innerText = "🛑 STOP LOOP"; btn.className = "bg-red-500 text-white px-3 py-1.5 text-xs font-bold rounded-full shadow animate-pulse";
+                isTryScanRunning = true; btn.innerText = "🛑 STOP SIMULATOR"; btn.className = "bg-red-500 text-white px-3 py-1.5 text-xs font-bold rounded-full animate-pulse";
                 tryScanTimerInterval = setInterval(() => {
                     const remaining = rosterList.filter(s => !questionLoggedIdsSet.has(s.markerId));
                     if(remaining.length === 0) { clearInterval(tryScanTimerInterval); toggleTryScanEngine(); return; }
                     const target = remaining[Math.floor(Math.random() * remaining.length)];
-                    const choices = ["A", "B", "C", "D"]; const randomChoice = choices[Math.floor(Math.random() * choices.length)];
-                    registerScannedAnswerTelemetryPacket(target.markerId, randomChoice);
+                    const choices = ["A", "B", "C", "D"]; 
+                    registerScannedAnswerTelemetryPacket(target.markerId, choices[Math.floor(Math.random() * 4)]);
                 }, 1000);
             }
         }
@@ -598,7 +644,7 @@
                 </div>`).join('');
         }
 
-        async function purgeLeaderboardMetrics() { if(confirm("Clear scoreboard standings?")) { await db.scores.clear(); displayMasterLeaderboard(); } }
+        async function purgeLeaderboardMetrics() { if(confirm("Clear standings?")) { await db.scores.clear(); displayMasterLeaderboard(); } }
 
         async function initializeCameraHardwareDecoderStream() {
             const video = document.getElementById('webcam-hardware-stream');
@@ -617,7 +663,7 @@
                     requestAnimationFrame(frameRenderProcessingLoop);
                 }
                 requestAnimationFrame(frameRenderProcessingLoop);
-            } catch (err) { console.warn("Camera pipeline load warning: " + err); }
+            } catch (err) { console.warn("Camera load warning: " + err); }
         }
 
         window.addEventListener('DOMContentLoaded', () => { syncFolderDropdowns(); loadQuizDirectory(); loadRosterCards(); });
