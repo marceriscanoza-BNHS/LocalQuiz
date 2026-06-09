@@ -406,88 +406,86 @@
             return `<div class="text-[10px] text-red-500">Error loading library layout engine</div>`;
         }
 
-        // 💾 HIGH CONFIDENCE SVG TO PNG WORKSPACE GENERATOR (Fixes item 2)
-        function renderAndDownloadCardImage(id, studentName) {
-            const svgElement = document.querySelector(`#marker-node-box-${id} svg`);
-            if(!svgElement) { alert("Marker asset context missing."); return; }
-            
-            const rawSvgString = new XMLSerializer().serializeToString(svgElement);
-            const encodedSvgData = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(rawSvgString)));
-            
-            const canvas = document.createElement('canvas');
-            canvas.width = 800; canvas.height = 1000;
-            const ctx = canvas.getContext('2d');
-            
-            // Build card container bounding frame background properties
+        // 🛠️ HELPER FUNCTION: Helper to cleanly turn an inline SVG element into an Image Object safely
+        function convertSvgToImagePromise(svgElement) {
+            return new Promise((resolve, reject) => {
+                try {
+                    const rawSvgString = new XMLSerializer().serializeToString(svgElement);
+                    const encodedSvgData = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(rawSvgString)));
+                    const img = new Image();
+                    img.onload = () => resolve(img);
+                    img.onerror = (e) => reject(e);
+                    img.src = encodedSvgData;
+                } catch (err) {
+                    reject(err);
+                }
+            });
+        }
+
+        // 🎨 CORE CARD BACKEND RENDER ENGINE: Draws the final composite card structure layout onto an isolated canvas context
+        function drawCardToCanvasContext(ctx, markerImageElement, studentName, id) {
             ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, 800, 1000);
             ctx.lineWidth = 16; ctx.strokeStyle = "#000000"; ctx.strokeRect(0, 0, 800, 1000);
             
-            // Draw maximized directional answer keys
             ctx.fillStyle = "#000000"; ctx.font = "900 90px sans-serif"; ctx.textBaseline = "middle"; ctx.textAlign = "center";
             ctx.fillText("A", 400, 65);
             ctx.save(); ctx.translate(735, 500); ctx.rotate(Math.PI / 2); ctx.fillText("B", 0, 0); ctx.restore();
             ctx.save(); ctx.translate(400, 935); ctx.rotate(Math.PI); ctx.fillText("C", 0, 0); ctx.restore();
             ctx.save(); ctx.translate(65, 500); ctx.rotate(-Math.PI / 2); ctx.fillText("D", 0, 0); ctx.restore();
             
-            const baseImg = new Image();
-            baseImg.onload = function() {
-                // Maximized marker dimensional draw coordinates
-                ctx.drawImage(baseImg, 130, 150, 540, 540);
+            ctx.drawImage(markerImageElement, 130, 150, 540, 540);
+            
+            ctx.fillStyle = "#000000"; ctx.font = "bold 44px sans-serif"; ctx.fillText(studentName.toUpperCase(), 400, 780);
+            ctx.fillStyle = "#6b7280"; ctx.font = "bold 22px monospace"; ctx.fillText(`ARUCO IDENTIFICATION KEY: ${id}`, 400, 835);
+        }
+
+        // 💾 INDIVIDUAL PNG DOWNLOADER (Fixed & Rewritten)
+        async function renderAndDownloadCardImage(id, studentName) {
+            const svgElement = document.querySelector(`#marker-node-box-${id} svg`);
+            if(!svgElement) { alert("Marker asset element structure missing from viewport."); return; }
+            
+            try {
+                const img = await convertSvgToImagePromise(svgElement);
+                const canvas = document.createElement('canvas');
+                canvas.width = 800; canvas.height = 1000;
+                const ctx = canvas.getContext('2d');
                 
-                // Card footers metadata text
-                ctx.fillStyle = "#000000"; ctx.font = "bold 44px sans-serif"; ctx.fillText(studentName.toUpperCase(), 400, 780);
-                ctx.fillStyle = "#6b7280"; ctx.font = "bold 22px monospace"; ctx.fillText(`ARUCO IDENTIFICATION KEY: ${id}`, 400, 835);
+                drawCardToCanvasContext(ctx, img, studentName, id);
                 
                 const downloadLink = document.createElement('a');
                 downloadLink.download = `${studentName.replace(/[^a-z0-9]/gi, '_')}_ID_${id}.png`;
                 downloadLink.href = canvas.toDataURL("image/png");
                 document.body.appendChild(downloadLink); downloadLink.click(); document.body.removeChild(downloadLink);
-            };
-            baseImg.src = encodedSvgData;
+            } catch (err) {
+                alert("Failed to extract marker image asset: " + err.message);
+            }
         }
 
-        // 📦 ZIP FILE BULK EXPORT ENGINE (Fixes item 3)
+        // 📦 FIXED ZIP FILE BULK EXPORT ENGINE
         async function downloadAllCardsAsZip() {
             const list = await db.roster.toArray();
             if(list.length === 0) { alert("Your Student Roster is completely empty."); return; }
             
             const zip = new JSZip();
-            let processedCounter = 0;
             
             for(let s of list) {
-                const canvas = document.createElement('canvas');
-                canvas.width = 800; canvas.height = 1000;
-                const ctx = canvas.getContext('2d');
+                const svgElement = document.querySelector(`#marker-node-box-${s.markerId} svg`);
+                if(!svgElement) continue; 
                 
-                ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, 800, 1000);
-                ctx.lineWidth = 16; ctx.strokeStyle = "#000000"; ctx.strokeRect(0, 0, 800, 1000);
-                
-                ctx.fillStyle = "#000000"; ctx.font = "900 90px sans-serif"; ctx.textBaseline = "middle"; ctx.textAlign = "center";
-                ctx.fillText("A", 400, 65);
-                ctx.save(); ctx.translate(735, 500); ctx.rotate(Math.PI / 2); ctx.fillText("B", 0, 0); ctx.restore();
-                ctx.save(); ctx.translate(400, 935); ctx.rotate(Math.PI); ctx.fillText("C", 0, 0); ctx.restore();
-                ctx.save(); ctx.translate(65, 500); ctx.rotate(-Math.PI / 2); ctx.fillText("D", 0, 0); ctx.restore();
-                
-                if (typeof AR !== 'undefined') {
-                    const dictionary = new AR.Dictionary("ARUCO");
-                    const bits = dictionary.getBits(s.markerId);
-                    const matrixBoxSize = 540; const cellSize = matrixBoxSize / 7; const startX = 130; const startY = 150;
-                    ctx.fillStyle = "#000000"; ctx.fillRect(startX, startY, matrixBoxSize, matrixBoxSize);
-                    for(let r=0; r<7; r++) { 
-                        for(let c=0; c<7; c++) { 
-                            ctx.fillStyle = bits[(r*7)+c] === 0 ? "#000000" : "#ffffff"; 
-                            ctx.fillRect(startX + (c * cellSize), startY + (r * cellSize), cellSize + 1, cellSize + 1); 
-                        } 
-                    }
+                try {
+                    const img = await convertSvgToImagePromise(svgElement);
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 800; canvas.height = 1000;
+                    const ctx = canvas.getContext('2d');
+                    
+                    drawCardToCanvasContext(ctx, img, s.name, s.markerId);
+                    
+                    const base64Data = canvas.toDataURL("image/png").split(',')[1];
+                    const sanitizedFileName = `${s.name.replace(/[^a-z0-9]/gi, '_')}_ID_${s.markerId}.png`;
+                    zip.file(sanitizedFileName, base64Data, {base64: true});
+                } catch (e) {
+                    console.error(`Skipping element build sequence ID: ${s.markerId}`, e);
                 }
-                
-                ctx.fillStyle = "#000000"; ctx.font = "bold 44px sans-serif"; ctx.fillText(s.name.toUpperCase(), 400, 780);
-                ctx.fillStyle = "#6b7280"; ctx.font = "bold 22px monospace"; ctx.fillText(`ARUCO IDENTIFICATION KEY: ${s.markerId}`, 400, 835);
-                
-                const base64Data = canvas.toDataURL("image/png").split(',')[1];
-                const sanitizedFileName = `${s.name.replace(/[^a-z0-9]/gi, '_')}_ID_${s.markerId}.png`;
-                zip.file(sanitizedFileName, base64Data, {base64: true});
-                processedCounter++;
             }
             
             zip.generateAsync({type:"blob"}).then(function(content) {
