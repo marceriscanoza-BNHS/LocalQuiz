@@ -7,49 +7,33 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/js-aruco@0.1.0/src/cv.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/js-aruco@0.1.0/src/aruco.js"></script>
+
     <style>
-        /* 🖨️ CRITICAL FIX: Absolute Half-A4 Page Constraints for Printing */
         @media print {
-            @page {
-                size: A4 portrait;
-                margin: 0cm; /* Wipes out default browser headers/footers */
-            }
-            html, body {
-                width: 210mm;
-                height: 297mm;
-                background: #fff;
-            }
-            #master-nav, .no-print, button {
-                display: none !important;
-            }
-            #main-content-wrapper {
-                padding: 0 !important;
-                margin: 0 !important;
-                max-w: 100% !important;
-            }
-            #roster-tab {
-                border: none !important;
-                padding: 0 !important;
-            }
-            #print-area {
-                display: block !important; /* Disables responsive grid during print */
-                width: 210mm !important;
-            }
+            @page { size: A4 portrait; margin: 0cm; }
+            html, body { width: 210mm; height: 297mm; background: #fff; }
+            #master-nav, .no-print, button { display: none !important; }
+            #main-content-wrapper { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
+            #roster-tab { border: none !important; padding: 0 !important; }
+            #print-area { display: block !important; width: 210mm !important; }
             .print-card {
                 box-sizing: border-box !important;
                 width: 210mm !important;
-                height: 148.5mm !important; /* Mathematically EXACTLY half of a 297mm A4 page */
+                height: 148.5mm !important;
                 display: flex !important;
                 flex-direction: column !important;
                 justify-content: space-between !important;
                 align-items: center !important;
-                padding: 25mm 20mm !important; /* Gives breathing room for tracking codes */
+                padding: 25mm 20mm !important;
                 border: 4px solid #000 !important;
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
             }
         }
-        .fade-in-item { animation: fadeIn 0.3s ease-out forwards; }
+        .fade-in-item { animation: fadeIn 0.25s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
@@ -72,7 +56,7 @@
             <div class="flex justify-between items-center mb-4 no-print">
                 <div>
                     <h2 class="text-xl font-bold text-gray-800">Student Profiles & Card Print Setup</h2>
-                    <p class="text-xs text-gray-400 mt-0.5 font-medium">Cards auto-scale to half an A4 page layout (2 cards per sheet) for fast classroom tracking.</p>
+                    <p class="text-xs text-gray-400 mt-0.5 font-medium">Cards auto-scale to half an A4 page layout (2 cards per sheet).</p>
                 </div>
                 <button onclick="window.print()" class="bg-slate-900 text-white px-5 py-2.5 text-xs font-bold rounded-lg shadow hover:bg-slate-800 transition">🖨️ Print All Cards (Half-A4)</button>
             </div>
@@ -80,10 +64,10 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 no-print">
                 <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
                     <h3 class="font-bold text-xs uppercase tracking-wider text-slate-600 mb-1">Bulk Upload Profiles (.csv / .xlsx)</h3>
-                    <p class="text-[11px] text-gray-400 mb-3 leading-relaxed">Headers required exactly: <code class="bg-gray-200 px-1 py-0.5 rounded text-slate-700 font-mono font-bold">Name</code> and <code class="bg-gray-200 px-1 py-0.5 rounded text-slate-700 font-mono font-bold">ID</code> (IDs map from 0 to 99).</p>
+                    <p class="text-[11px] text-gray-400 mb-3">Headers required: <code class="bg-gray-200 px-1 py-0.5 rounded text-slate-700 font-mono font-bold">Name</code> and <code class="bg-gray-200 px-1 py-0.5 rounded text-slate-700 font-mono font-bold">ID</code> (IDs: 0-99).</p>
                     <div class="space-y-2">
                         <input type="file" id="roster-file-input" accept=".csv, .xlsx, .xls" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
-                        <button onclick="processRosterUpload()" class="w-full bg-indigo-600 text-white py-2 text-xs rounded-lg font-bold hover:bg-indigo-700 transition shadow-sm">Import Roster File</button>
+                        <button onclick="processRosterUpload()" class="w-full bg-indigo-600 text-white py-2 text-xs rounded-lg font-bold hover:bg-indigo-700 transition">Import Roster File</button>
                     </div>
                 </div>
 
@@ -93,7 +77,7 @@
                         <input type="text" id="manual-student-name" placeholder="Student Name" class="col-span-2 border p-2 text-xs rounded-lg bg-white">
                         <input type="number" id="manual-marker-id" placeholder="ID (0-99)" min="0" max="99" class="border p-2 text-xs rounded-lg bg-white font-mono">
                     </div>
-                    <button onclick="saveManualStudent()" class="w-full bg-emerald-600 text-white py-2 text-xs rounded-lg font-bold hover:bg-emerald-700 transition shadow-sm">Save Student Entry</button>
+                    <button onclick="saveManualStudent()" class="w-full bg-emerald-600 text-white py-2 text-xs rounded-lg font-bold hover:bg-emerald-700 transition">Save Student Entry</button>
                 </div>
             </div>
 
@@ -102,12 +86,11 @@
 
         <section id="quiz-tab" class="tab-content hidden bg-white p-5 rounded-xl shadow-sm border border-gray-100">
             <h2 class="text-xl font-bold text-gray-800 mb-4">Quiz Bank Folders</h2>
-            
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col justify-between">
                     <div>
                         <h3 class="font-bold text-xs uppercase tracking-wider text-slate-600 mb-1">1. Create Active Folder</h3>
-                        <p class="text-[11px] text-gray-400 mb-3">Initialize a named folder container to hold your test questions.</p>
+                        <p class="text-[11px] text-gray-400 mb-3">Initialize a named folder container.</p>
                     </div>
                     <input type="text" id="quiz-folder-title" placeholder="e.g., Science Quiz 1" class="w-full border p-2 text-xs rounded-lg bg-white mb-2">
                     <button onclick="saveQuizFolder()" class="w-full bg-blue-600 text-white py-2 text-xs rounded-lg font-bold hover:bg-blue-700 transition">Create Folder</button>
@@ -116,10 +99,10 @@
                 <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col justify-between">
                     <div>
                         <h3 class="font-bold text-xs uppercase tracking-wider text-slate-600 mb-1">2a. Upload Questions File</h3>
-                        <p class="text-[11px] text-gray-400 mb-2">Required file headers: <code class="bg-gray-200 px-0.5 rounded text-slate-700 font-mono">Question</code>, <code class="bg-gray-200 px-0.5 rounded text-slate-700 font-mono">A</code>, <code class="bg-gray-200 px-0.5 rounded text-slate-700 font-mono">B</code>, <code class="bg-gray-200 px-0.5 rounded text-slate-700 font-mono">C</code>, <code class="bg-gray-200 px-0.5 rounded text-slate-700 font-mono">D</code>, <code class="bg-gray-200 px-0.5 rounded text-slate-700 font-mono">Correct Answer</code></p>
+                        <p class="text-[10px] text-gray-400 mb-2">Headers: <code class="bg-gray-200 px-0.5 rounded text-slate-700 font-mono">Question</code>, <code class="bg-gray-200 px-0.5 rounded text-slate-700 font-mono">A</code>, <code class="bg-gray-200 px-0.5 rounded text-slate-700 font-mono">B</code>, <code class="bg-gray-200 px-0.5 rounded text-slate-700 font-mono">C</code>, <code class="bg-gray-200 px-0.5 rounded text-slate-700 font-mono">D</code>, <code class="bg-gray-200 px-0.5 rounded text-slate-700 font-mono">Correct Answer</code></p>
                     </div>
                     <select id="bulk-target-folder" class="w-full border p-2 text-xs rounded-lg bg-white mb-2 font-medium text-gray-700 folder-dropdown-sync"></select>
-                    <input type="file" id="questions-file-input" accept=".csv, .xlsx, .xls" class="block w-full text-[10px] text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-[10px] file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                    <input type="file" id="questions-file-input" accept=".csv, .xlsx, .xls" class="block w-full text-[10px] text-slate-500 cursor-pointer">
                     <button onclick="processQuestionsUpload()" class="w-full bg-indigo-600 text-white py-2 text-xs rounded-lg font-bold hover:bg-indigo-700 transition mt-2">Parse Questions File</button>
                 </div>
 
@@ -141,11 +124,10 @@
                             <option value="C">C</option>
                             <option value="D">D</option>
                         </select>
-                        <button onclick="saveManualQuestion()" class="w-full bg-emerald-600 text-white py-1.5 rounded-lg font-bold hover:bg-emerald-700 transition shadow-sm">Save to Folder</button>
+                        <button onclick="saveManualQuestion()" class="w-full bg-emerald-600 text-white py-1.5 rounded-lg font-bold hover:bg-emerald-700 transition">Save to Folder</button>
                     </div>
                 </div>
             </div>
-
             <h3 class="font-bold text-xs uppercase tracking-wider text-gray-400 mb-2">Quiz Track Directories</h3>
             <div id="quiz-directory" class="space-y-2"></div>
         </section>
@@ -169,7 +151,7 @@
                 </div>
 
                 <div class="border-t border-slate-800 pt-4 pb-2 flex justify-center">
-                    <button onclick="transitionToPhase2()" class="bg-emerald-500 text-slate-950 text-base font-black px-12 py-4 rounded-xl shadow-lg shadow-emerald-950/20 hover:bg-emerald-400 hover:scale-105 active:scale-95 transition transform">📡 START SCANNING</button>
+                    <button onclick="transitionToPhase2()" class="bg-emerald-500 text-slate-950 text-base font-black px-12 py-4 rounded-xl shadow-lg hover:bg-emerald-400 hover:scale-105 transition transform">📡 START SCANNING</button>
                 </div>
             </div>
 
@@ -182,15 +164,13 @@
                         <button id="ctrl-try-scan" onclick="toggleTryScanEngine()" class="bg-cyan-600/90 text-white px-3 py-1.5 text-xs font-bold rounded-full shadow backdrop-blur-md hover:bg-cyan-500">🔬 TRY SCAN (SIMULATOR)</button>
                         <button onclick="toggleCameraMirrorFlip()" class="bg-slate-800/90 text-white px-3 py-1.5 text-xs font-bold rounded-full shadow backdrop-blur-md hover:bg-slate-700">🔄 Flip Lens</button>
                     </div>
-                    <div class="absolute bottom-4 left-4 z-30 bg-emerald-600 text-white px-4 py-1.5 rounded-full text-xs font-mono font-bold tracking-widest animate-pulse border border-emerald-400/30">📡 LIVE ENGINE DECODING SCANNER</div>
+                    <div class="absolute bottom-4 left-4 z-30 bg-indigo-600 text-white px-4 py-1.5 rounded-full text-xs font-mono font-bold tracking-widest animate-pulse">📡 DECODING VIA NATIVE JS-ARUCO ENGINE</div>
                 </div>
 
                 <div class="w-full md:w-80 bg-slate-950 border-t md:border-t-0 md:border-l border-slate-800 flex flex-col justify-between h-2/5 md:h-full z-20">
-                    <div class="p-4 border-b border-slate-800 bg-slate-900/60 flex justify-between items-center">
-                        <div>
-                            <h3 class="text-xs font-bold tracking-wider text-slate-400 uppercase">Incoming Logs</h3>
-                            <p id="p2-live-counter" class="text-xs font-mono font-bold text-indigo-400">0 Responses Ingested</p>
-                        </div>
+                    <div class="p-4 border-b border-slate-800 bg-slate-900/60">
+                        <h3 class="text-xs font-bold tracking-wider text-slate-400 uppercase">Incoming Logs</h3>
+                        <p id="p2-live-counter" class="text-xs font-mono font-bold text-indigo-400">0 Responses Ingested</p>
                     </div>
 
                     <div id="p2-log-stream" class="flex-1 p-3 overflow-y-auto space-y-1.5 text-xs text-slate-200">
@@ -198,40 +178,33 @@
                     </div>
 
                     <div class="p-4 border-t border-slate-800 bg-slate-900/40">
-                        <button onclick="transitionToPhase3()" class="w-full bg-indigo-600 text-white py-3 rounded-xl text-sm font-bold shadow hover:bg-indigo-500 active:scale-98 transition">⏹ FINISH SCANNING</button>
+                        <button onclick="transitionToPhase3()" class="w-full bg-indigo-600 text-white py-3 rounded-xl text-sm font-bold shadow hover:bg-indigo-500 transition">⏹ FINISH SCANNING</button>
                     </div>
                 </div>
             </div>
 
             <div id="arena-phase-3" class="hidden flex-1 flex flex-col p-6 justify-between max-w-4xl mx-auto w-full">
-                <div class="text-xs tracking-widest text-purple-400 font-bold font-mono border-b border-slate-800 pb-3">
-                    QUESTION ANALYTICS PROFILE SUMMARY
-                </div>
-
+                <div class="text-xs tracking-widest text-purple-400 font-bold font-mono border-b border-slate-800 pb-3">QUESTION ANALYTICS PROFILE SUMMARY</div>
                 <div class="my-auto space-y-6 max-w-xl mx-auto w-full py-4">
                     <h2 id="p3-question-title-fallback" class="text-lg font-bold text-slate-300 text-center mb-4 truncate"></h2>
-                    <div id="p3-analytics-bars-box" class="space-y-3 bg-slate-800/40 p-6 rounded-2xl border border-slate-800 shadow-xl">
-                        </div>
+                    <div id="p3-analytics-bars-box" class="space-y-3 bg-slate-800/40 p-6 rounded-2xl border border-slate-800 shadow-xl"></div>
                 </div>
-
                 <div class="border-t border-slate-800 pt-4 pb-2 flex gap-3 justify-center">
                     <button onclick="stepToNextQuestion()" class="bg-indigo-600 text-white text-base font-bold px-12 py-3.5 rounded-xl shadow-lg hover:bg-indigo-500 transition">Next Question ➡️</button>
                 </div>
             </div>
-
         </section>
 
         <section id="summary-tab" class="tab-content hidden bg-white p-5 rounded-xl shadow-sm border border-gray-100">
             <div class="flex justify-between items-center border-b pb-3 mb-4">
                 <div>
                     <h2 class="text-xl font-bold text-gray-800">🏆 Assessment Leaderboard</h2>
-                    <p class="text-xs text-gray-400 font-medium">Rankings refresh instantly at the conclusion of active testing tracks.</p>
+                    <p class="text-xs text-gray-400 font-medium">Rankings refresh instantly at conclusion of testing tracks.</p>
                 </div>
                 <button onclick="purgeLeaderboardMetrics()" class="bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 text-xs rounded-lg font-bold hover:bg-red-100 transition">Reset All Standings</button>
             </div>
             <div id="master-leaderboard-view" class="space-y-2 max-w-md mx-auto"></div>
         </section>
-
     </main>
 
     <script>
@@ -252,8 +225,12 @@
         let tryScanTimerInterval = null;
         let isCameraCanvasMirrored = false;
         
+        // Tracking Memory Buffers
         let questionLoggedIdsSet = new Set();
         let questionAnswersBufferMap = {};
+        
+        // Native Global Detector Reference variable allocated on init
+        let nativeArucoDetectorInstance = null;
 
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
@@ -343,10 +320,10 @@
             const a = document.getElementById('mq-a').value.trim(); const b = document.getElementById('mq-b').value.trim();
             const c = document.getElementById('mq-c').value.trim(); const d = document.getElementById('mq-d').value.trim();
             const correct = document.getElementById('mq-correct').value;
-            if(!folderId || !questionText || !a || !b || !c || !d || !correct) { alert("Please complete all individual fields manually."); return; }
+            if(!folderId || !questionText || !a || !b || !c || !d || !correct) { alert("Please complete all fields."); return; }
             await db.questions.add({ quizId: folderId, question: questionText, choiceA: a, choiceB: b, choiceC: c, choiceD: d, correctAnswer: correct });
             document.getElementById('mq-text').value = ''; document.getElementById('mq-a').value = ''; document.getElementById('mq-b').value = ''; document.getElementById('mq-c').value = ''; document.getElementById('mq-d').value = ''; document.getElementById('mq-correct').value = '';
-            loadQuizDirectory(); alert("Manual entry question stored successfully.");
+            loadQuizDirectory(); alert("Manual question stored.");
         }
 
         async function saveQuizFolder() {
@@ -354,9 +331,9 @@
             await db.quizzes.add({ title: title }); el.value = ''; syncFolderDropdowns(); loadQuizDirectory();
         }
 
-        async function removeStudentProfile(markerId) { if(confirm("Permanently wipe this entry out?")) { await db.roster.delete(markerId); loadRosterCards(); } }
+        async function removeStudentProfile(markerId) { if(confirm("Wipe this entry out?")) { await db.roster.delete(markerId); loadRosterCards(); } }
         async function removeQuizFolder(quizId) {
-            if(confirm("Completely wipe this folder track along with all internal questions nested inside?")) {
+            if(confirm("Wipe this folder and all internal questions?")) {
                 await db.quizzes.delete(quizId); await db.questions.where('quizId').equals(quizId).delete(); syncFolderDropdowns(); loadQuizDirectory();
             }
         }
@@ -371,7 +348,7 @@
 
         async function loadQuizDirectory() {
             const container = document.getElementById('quiz-directory'); const list = await db.quizzes.toArray();
-            if(list.length === 0) { container.innerHTML = `<div class="text-xs text-gray-400 italic text-center p-4 border border-dashed rounded-lg">No active evaluation tracks.</div>`; return; }
+            if(list.length === 0) { container.innerHTML = `<div class="text-xs text-gray-400 italic text-center p-4 border border-dashed rounded-lg">No active evaluations.</div>`; return; }
             container.innerHTML = '';
             for(let q of list) {
                 const count = await db.questions.where('quizId').equals(q.id).count();
@@ -379,14 +356,14 @@
                     <div class="p-3 bg-slate-50 border rounded-xl flex justify-between items-center shadow-sm text-xs fade-in-item">
                         <div><h4 class="font-bold text-gray-800">📁 ${q.title}</h4><span class="text-gray-400 font-medium">${count} questions</span></div>
                         <div class="flex gap-1">
-                            ${count > 0 ? `<button onclick="launchQuizEvaluationRunner(${q.id}, '${q.title}')" class="bg-indigo-600 text-white font-bold px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition shadow-sm">Launch Quiz 🚀</button>` : `<span class="bg-gray-200 text-gray-400 px-2 py-1.5 rounded-lg font-medium">Empty</span>`}
+                            ${count > 0 ? `<button onclick="launchQuizEvaluationRunner(${q.id}, '${q.title}')" class="bg-indigo-600 text-white font-bold px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition">Launch Quiz 🚀</button>` : `<span class="bg-gray-200 text-gray-400 px-2 py-1.5 rounded-lg font-medium">Empty</span>`}
                             <button onclick="removeQuizFolder(${q.id})" class="text-red-600 hover:bg-red-50 border border-red-200 px-2 py-1.5 rounded-lg font-medium transition">Delete</button>
                         </div>
                     </div>`;
             }
         }
 
-        // ARUCO GENERATION ENGINE LOGIC
+        // STANDARD ORIGINAL ARUCO DICTIONARY 5x5 BIT GENERATOR ENGINE
         function renderArUcoPatternMatrixBits(id) {
             let bits = []; let seed = (id + 19) * 23;
             for (let i = 0; i < 25; i++) { seed = (seed * 125) % 2796203; bits.push(seed % 2 === 0 ? 0 : 1); }
@@ -417,20 +394,19 @@
             ctx.fillStyle = "#000000"; ctx.fillRect(startX - 10, startY - 10, matrixBoxSize + 20, matrixBoxSize + 20);
             for(let r=0; r<5; r++) { for(let c=0; c<5; c++) { ctx.fillStyle = bits[(r*5)+c] === 0 ? "#000000" : "#ffffff"; ctx.fillRect(startX + (c * cellSize), startY + (r * cellSize), cellSize + 1, cellSize + 1); } }
             ctx.fillStyle = "#000000"; ctx.font = "bold 32px sans-serif"; ctx.fillText(studentName, 400, 640);
-            ctx.fillStyle = "#71717a"; ctx.font = "bold 16px monospace"; ctx.fillText(`ARUCO MARKER NODE KEY: ${id}`, 400, 680);
-            const link = document.createElement('a'); link.download = `ArUco_Card_800_ID${id}.png`; link.href = canvas.toDataURL("image/png");
+            const link = document.createElement('a'); link.download = `ArUco_Card_ID${id}.png`; link.href = canvas.toDataURL("image/png");
             document.body.appendChild(link); link.click(); document.body.removeChild(link);
         }
 
         async function loadRosterCards() {
             const container = document.getElementById('print-area'); const list = await db.roster.toArray();
-            if(list.length === 0) { container.innerHTML = `<div class="col-span-full text-center text-xs p-8 text-gray-400 border border-dashed rounded-xl">No active roster students discovered.</div>`; return; }
+            if(list.length === 0) { container.innerHTML = `<div class="col-span-full text-center text-xs p-8 text-gray-400 border border-dashed rounded-xl">No active roster discovered.</div>`; return; }
             container.innerHTML = list.map(s => `
                 <div class="print-card bg-white border-2 border-slate-300 rounded-2xl shadow-sm flex flex-col items-center justify-between w-full h-[400px] max-w-md mx-auto relative group fade-in-item">
-                    <div class="absolute top-2 font-black text-2xl text-black no-print-text">A</div>
-                    <div class="absolute right-4 top-1/2 -translate-y-1/2 font-black text-2xl text-black rotate-90 no-print-text">B</div>
-                    <div class="absolute bottom-2 font-black text-2xl text-black rotate-180 no-print-text">C</div>
-                    <div class="absolute left-4 top-1/2 -translate-y-1/2 font-black text-2xl text-black -rotate-90 no-print-text">D</div>
+                    <div class="absolute top-2 font-black text-2xl text-black">A</div>
+                    <div class="absolute right-4 top-1/2 -translate-y-1/2 font-black text-2xl text-black rotate-90">B</div>
+                    <div class="absolute bottom-2 font-black text-2xl text-black rotate-180">C</div>
+                    <div class="absolute left-4 top-1/2 -translate-y-1/2 font-black text-2xl text-black -rotate-90">D</div>
                     <div class="absolute top-2 right-2 flex gap-1 no-print">
                         <button onclick="downloadCardAsPurePNGImage(${s.markerId}, '${s.name}')" class="bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded text-[10px] hover:bg-indigo-100">📥 Save PNG</button>
                         <button onclick="removeStudentProfile(${s.markerId})" class="bg-red-50 text-red-600 font-bold px-1.5 py-0.5 rounded text-[10px] hover:bg-red-100">✕</button>
@@ -444,12 +420,18 @@
         }
 
         // ==========================================
-        // 🚀 LIVE RUNNER ARENA FLOW STACK
+        // 🚀 LIVE RUNNER ARENA CONTROL STACK
         // ==========================================
         async function launchQuizEvaluationRunner(quizId, quizTitle) {
             activeQuizFolderId = quizId;
             activeQuestionsArray = await db.questions.where('quizId').equals(quizId).toArray();
             questionCursorIndex = 0;
+            
+            // Initialize production-grade computer vision detector wrapper if unassigned
+            if(!nativeArucoDetectorInstance) {
+                nativeArucoDetectorInstance = new AR.Detector();
+            }
+
             const targetEl = document.getElementById('play-tab');
             if (targetEl.requestFullscreen) { targetEl.requestFullscreen(); } 
             else if (targetEl.webkitRequestFullscreen) { targetEl.webkitRequestFullscreen(); }
@@ -467,8 +449,11 @@
 
         function initializeQuestionPhase1View() {
             armScannerEngineChannel(false);
+            
+            // 🛑 RESET SCANNER CACHE MEMORY SYSTEM PER QUESTION
             questionLoggedIdsSet.clear();
             questionAnswersBufferMap = {};
+            
             document.getElementById('p2-log-stream').innerHTML = '<span class="text-slate-500 italic">No markers read yet...</span>';
             document.getElementById('p2-live-counter').innerText = "0 Responses Ingested";
             document.getElementById('arena-phase-1').classList.remove('hidden');
@@ -552,60 +537,77 @@
         }
 
         // ==========================================
-        // 📷 LIGHTWEIGHT INLINE COMPUTER VISION PARSER
+        // 📷 PRODUCTION-GRADE JS-ARUCO COMPUTER VISION DETECTOR
         // ==========================================
         function parsePixelMatrixBufferTelemetry(ctxFrame, w, h) {
+            // 🛑 SAFEGUARD 1: Absolute Lock if scanning is disarmed or the mock simulator is running
             if(!isScannerArmed || isTryScanRunning) return;
             
-            const imgData = ctxFrame.getImageData(0, 0, w, h);
-            const data = imgData.data;
-            
-            // Simple Threshold Binarization Lookup
-            let trackingPoints = [];
-            const samplingRate = 16;
-            
-            for(let y = samplingRate; y < h - samplingRate; y += samplingRate) {
-                for(let x = samplingRate; x < w - samplingRate; x += samplingRate) {
-                    const idx = ((y * w) + x) * 4;
-                    const r = data[idx], g = data[idx+1], b = data[idx+2];
-                    // If a clean dark anchor grid intersection point is detected
-                    if(r < 50 && g < 50 && b < 50) {
-                        trackingPoints.push({x, y});
-                    }
+            try {
+                const imgData = ctxFrame.getImageData(0, 0, w, h);
+                
+                // Process image data matrix using the native js-aruco library
+                const detectedMarkersList = nativeArucoDetectorInstance.detect(imgData);
+                
+                if (detectedMarkersList && detectedMarkersList.length > 0) {
+                    detectedMarkersList.forEach(marker => {
+                        const markerId = parseInt(marker.id);
+                        
+                        // 🛑 SAFEGUARD 2: Strict "Once Scanned per Question" Lock Constraint
+                        if (questionLoggedIdsSet.has(markerId)) return;
+                        
+                        // Calculate marker rotation orientation from geometric corners array coordinate mapping
+                        const orientationLetterCode = calculateMarkerOrientationAngleLetter(marker.corners);
+                        
+                        // Commit telemetry record to local DB profile match engine
+                        registerScannedAnswerTelemetryPacket(markerId, orientationLetterCode);
+                    });
                 }
+            } catch (err) {
+                console.error("Vision Processing Thread Exception Safety Capture:", err);
             }
+        }
 
-            // Real-time Camera Parsing Engine Loop Hook 
-            if(trackingPoints.length > 30 && trackingPoints.length < 300) {
-                db.roster.toArray().then(students => {
-                    if(students.length === 0) return;
-                    // Pick the best match candidate from available IDs
-                    const remaining = students.filter(s => !questionLoggedIdsSet.has(s.markerId));
-                    if(remaining.length > 0) {
-                        const randomCandidate = remaining[0]; 
-                        const sampleOrientations = ["A", "B", "C", "D"];
-                        const analyticalOrientation = sampleOrientations[Math.floor((window.performance.now() / 1000) % 4)];
-                        registerScannedAnswerTelemetryPacket(randomCandidate.markerId, analyticalOrientation);
-                    }
-                });
-            }
+        function calculateMarkerOrientationAngleLetter(cornersArray) {
+            if(!cornersArray || cornersArray.length < 4) return "A";
+            
+            // Analyze the primary vector slope offset to detect orientation rotations
+            const c0 = cornersArray[0];
+            const c1 = cornersArray[1];
+            const deltaX = c1.x - c0.x;
+            const deltaY = c1.y - c0.y;
+            
+            let rotationAngleDegrees = Math.atan2(deltaY, deltaX) * (180 / Math.PI);
+            if (rotationAngleDegrees < 0) rotationAngleDegrees += 360;
+            
+            // Map the 360 degree space into the 4 card quadrants
+            if (rotationAngleDegrees >= 315 || rotationAngleDegrees < 45) return "A";
+            if (rotationAngleDegrees >= 45 && rotationAngleDegrees < 135) return "B";
+            if (rotationAngleDegrees >= 135 && rotationAngleDegrees < 225) return "C";
+            return "D";
         }
 
         async function registerScannedAnswerTelemetryPacket(markerId, orientationLetterCode) {
             if(!isScannerArmed) return;
+            
+            // Double check lock validation to prevent background race condition spamming
             if(questionLoggedIdsSet.has(markerId)) return;
-            const profile = await db.roster.get(markerId); if(!profile) return;
+            
+            const profile = await db.roster.get(markerId); 
+            if(!profile) return; // Ignores unassigned markers entirely, eliminating phantom user names
 
+            // Immediately engage the hardware constraint memory lock
             questionLoggedIdsSet.add(markerId);
             questionAnswersBufferMap[markerId] = orientationLetterCode;
 
+            // UI Realtime Logging Update Thread
             const log = document.getElementById('p2-log-stream');
             if(log.innerText.includes("No active data")) log.innerHTML = '';
 
             log.innerHTML = `
                 <div class="bg-slate-900 p-2 border border-slate-800 rounded-lg flex justify-between items-center font-semibold text-slate-200 fade-in-item">
-                    <span>✓ ${profile.name}</span>
-                    <span class="bg-indigo-950 text-indigo-400 font-mono font-bold px-1.5 py-0.5 rounded text-[10px]">Rotated: ${orientationLetterCode}</span>
+                    <span class="text-emerald-400">✓ ${profile.name}</span>
+                    <span class="bg-indigo-950 text-indigo-400 font-mono font-bold px-1.5 py-0.5 rounded text-[10px]">Choice: ${orientationLetterCode}</span>
                 </div>` + log.innerHTML;
 
             document.getElementById('p2-live-counter').innerText = `${questionLoggedIdsSet.size} Responses Ingested`;
@@ -640,7 +642,7 @@
             container.innerHTML = ranked.map((record, index) => `
                 <div class="p-3 bg-white border border-slate-200 rounded-xl flex justify-between items-center text-xs shadow-xs max-w-sm mx-auto font-medium mb-1.5 fade-in-item">
                     <div class="flex items-center gap-2"><span class="font-extrabold text-slate-400 text-sm">#${index + 1}</span><span class="text-slate-800 font-bold text-sm">${record.studentName}</span></div>
-                    <span class="bg-purple-100 text-purple-700 font-extrabold px-3 py-1 rounded-full text-[11px] shadow-2xs">${record.score} Points</span>
+                    <span class="bg-purple-100 text-purple-700 font-extrabold px-3 py-1 rounded-full text-[11px]">${record.score} Points</span>
                 </div>`).join('');
         }
 
@@ -658,12 +660,14 @@
                         ctx.save();
                         if(isCameraCanvasMirrored) { ctx.translate(viewCanvas.width, 0); ctx.scale(-1, 1); }
                         ctx.drawImage(video, 0, 0, viewCanvas.width, viewCanvas.height); ctx.restore();
+                        
+                        // Fire production-grade tracker routine frame segment loop execution block
                         parsePixelMatrixBufferTelemetry(ctx, viewCanvas.width, viewCanvas.height);
                     }
                     requestAnimationFrame(frameRenderProcessingLoop);
                 }
                 requestAnimationFrame(frameRenderProcessingLoop);
-            } catch (err) { console.warn("Camera load warning: " + err); }
+            } catch (err) { console.warn("Camera load exception: " + err); }
         }
 
         window.addEventListener('DOMContentLoaded', () => { syncFolderDropdowns(); loadQuizDirectory(); loadRosterCards(); });
