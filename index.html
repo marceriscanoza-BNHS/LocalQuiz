@@ -187,7 +187,7 @@
                         <button id="ctrl-try-scan" onclick="toggleTryScanEngine()" class="bg-cyan-600/90 text-white px-3 py-1.5 text-xs font-bold rounded-full shadow backdrop-blur-md hover:bg-cyan-500">🔬 TRY SCAN (SIMULATOR)</button>
                         <button onclick="toggleCameraMirrorFlip()" class="bg-slate-800/90 text-white px-3 py-1.5 text-xs font-bold rounded-full shadow backdrop-blur-md hover:bg-slate-700">🔄 Flip Lens</button>
                     </div>
-                    <div class="absolute bottom-4 left-4 z-30 bg-emerald-600 text-white px-4 py-1.5 rounded-full text-xs font-mono font-bold tracking-widest animate-pulse border border-emerald-400/30">📡 LIVE MATHEMATICAL COMPUTER VISION ARMED</div>
+                    <div class="absolute bottom-4 left-4 z-30 bg-emerald-600 text-white px-4 py-1.5 rounded-full text-xs font-mono font-bold tracking-widest animate-pulse border border-emerald-400/30">📡 LIVE COMPUTER VISION ACTIVE</div>
                 </div>
 
                 <div class="w-full md:w-80 bg-slate-950 border-t md:border-t-0 md:border-l border-slate-800 flex flex-col justify-between h-2/5 md:h-full z-20">
@@ -260,7 +260,7 @@
         let questionLoggedIdsSet = new Set();
         let questionAnswersBufferMap = {};
         
-        // Initialize the formal ArUco Detector from jsaruco dependency layer
+        // Initialize formal ArUco framework
         const formalArucoDetector = new AR.Detector();
 
         function switchTab(tabId) {
@@ -394,7 +394,7 @@
             }
         }
 
-        // ORIGINAL FORMAL ARUCO 5x5 GENERATION SCHEMATIC ENGINES
+        // GENERATION SCHEMATIC ENGINES
         function generateOriginalArucoBitsGrid(id) {
             const originalDictionaries = [
                 [1,1,0,1,1,1,0,1,0,0,1,0,1,1,1,1,1,1,1,1,0,0,1,0,0], // ID 0
@@ -404,7 +404,6 @@
             ];
             if (id < originalDictionaries.length) return originalDictionaries[id];
             
-            // Mathematical deterministic fallback for high values up to 99
             let bits = []; let seed = (id + 31) * 47;
             for (let i = 0; i < 25; i++) { seed = (seed * 133) % 2796203; bits.push(seed % 2 === 0 ? 0 : 1); }
             for(let b = 0; b < 5; b++) { bits[b] = 0; bits[b * 5] = 0; bits[(b * 5) + 4] = 0; bits[20 + b] = 0; }
@@ -460,9 +459,7 @@
                 </div>`).join('');
         }
 
-        // ==========================================
-        // QUIZ RUNNER INTERACTIVE ENVIRONMENT ARENA FLOW
-        // ==========================================
+        // QUIZ RUNNER INTERACTIVE ENVIRONMENT
         async function launchQuizEvaluationRunner(quizId, quizTitle) {
             activeQuizFolderId = quizId;
             activeQuestionsArray = await db.questions.where('quizId').equals(quizId).toArray();
@@ -568,40 +565,28 @@
             }
         }
 
-        // ==========================================
-        // 📷 STRICT COMPUTER VISION DECODING INFRASTRUCTURE
-        // ==========================================
+        // STRICT COMPUTER VISION DECODING INFRASTRUCTURE
         function parsePixelMatrixBufferTelemetry(ctxFrame, w, h) {
             if (!isScannerArmed || isTryScanRunning) return;
             
-            // Extract the true camera canvas image frame buffer
             const rawFrameBufferImage = ctxFrame.getImageData(0, 0, w, h);
-            
-            // Run the strict jsaruco mathematical boundary matrix verification
             const detectedMarkersArray = formalArucoDetector.detect(rawFrameBufferImage);
             
             if (detectedMarkersArray && detectedMarkersArray.length > 0) {
                 detectedMarkersArray.forEach(marker => {
                     const extractedId = parseInt(marker.id);
-                    
-                    // Filter out random garbage indexes outside our 0-99 roster spectrum
                     if (extractedId >= 0 && extractedId <= 99) {
-                        
-                        // Calculate orientation based on corner geometry positions
-                        // jsaruco matches corners in sequential clockwise orientation paths
                         const c0 = marker.corners[0], c1 = marker.corners[1];
                         const deltaY = c1.y - c0.y, deltaX = c1.x - c0.x;
                         const angleRadians = Math.atan2(deltaY, deltaX);
                         const angleDegrees = angleRadians * (180 / Math.PI);
                         
-                        // Convert degrees rotation into clear ABCD mapping indices
                         let normalizedChoiceCode = "A";
                         if (angleDegrees > -45 && angleDegrees <= 45) normalizedChoiceCode = "A";
                         else if (angleDegrees > 45 && angleDegrees <= 135) normalizedChoiceCode = "B";
                         else if (angleDegrees > 135 || angleDegrees <= -135) normalizedChoiceCode = "C";
                         else if (angleDegrees > -135 && angleDegrees <= -45) normalizedChoiceCode = "D";
                         
-                        // Send clean valid data packets down our analytics stream channel
                         registerScannedAnswerTelemetryPacket(extractedId, normalizedChoiceCode);
                     }
                 });
@@ -628,7 +613,7 @@
             document.getElementById('p2-live-counter').innerText = `${questionLoggedIdsSet.size} Responses Ingested`;
         }
 
-        // SIMULATOR CONTROL DECK HOOKS
+        // SIMULATOR DECK HOOKS
         async function toggleTryScanEngine() {
             const btn = document.getElementById('ctrl-try-scan');
             if(isTryScanRunning) {
@@ -666,22 +651,38 @@
         async function initializeCameraHardwareDecoderStream() {
             const video = document.getElementById('webcam-hardware-stream');
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 640 }, height: { ideal: 480 } } });
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: { ideal: "environment" }, width: { ideal: 640 }, height: { ideal: 480 } } 
+                });
                 video.srcObject = stream;
-                const viewCanvas = document.getElementById('vision-processing-canvas'); const ctx = viewCanvas.getContext('2d');
-                function frameRenderProcessingLoop() {
-                    if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                        if(viewCanvas.width !== video.videoWidth) { viewCanvas.width = video.videoWidth; viewCanvas.height = video.videoHeight; }
-                        ctx.save();
-                        if(isCameraCanvasMirrored) { ctx.translate(viewCanvas.width, 0); ctx.scale(-1, 1); }
-                        ctx.drawImage(video, 0, 0, viewCanvas.width, viewCanvas.height); ctx.restore();
-                        parsePixelMatrixBufferTelemetry(ctx, viewCanvas.width, viewCanvas.height);
-                    }
-                    if (isScannerArmed && !isTryScanRunning) {
+                
+                const viewCanvas = document.getElementById('vision-processing-canvas'); 
+                const ctx = viewCanvas.getContext('2d');
+                
+                let lastAnalysisTimestamp = 0;
+                const analysisThrottleInterval = 65; // ~15fps analysis throttle to protect CPU thread loop
+
+                function frameRenderProcessingLoop(currentHighResTimestamp) {
+                    if (video.videoWidth === 0 || video.videoHeight === 0) {
                         requestAnimationFrame(frameRenderProcessingLoop);
-                    } else {
-                        setTimeout(frameRenderProcessingLoop, 250);
+                        return;
                     }
+                    if(viewCanvas.width !== video.videoWidth) { 
+                        viewCanvas.width = video.videoWidth; 
+                        viewCanvas.height = video.videoHeight; 
+                    }
+                    ctx.save();
+                    if(isCameraCanvasMirrored) { ctx.translate(viewCanvas.width, 0); ctx.scale(-1, 1); }
+                    ctx.drawImage(video, 0, 0, viewCanvas.width, viewCanvas.height); 
+                    ctx.restore();
+
+                    if (isScannerArmed && !isTryScanRunning) {
+                        if (currentHighResTimestamp - lastAnalysisTimestamp >= analysisThrottleInterval) {
+                            parsePixelMatrixBufferTelemetry(ctx, viewCanvas.width, viewCanvas.height);
+                            lastAnalysisTimestamp = currentHighResTimestamp;
+                        }
+                    }
+                    requestAnimationFrame(frameRenderProcessingLoop);
                 }
                 requestAnimationFrame(frameRenderProcessingLoop);
             } catch (err) { console.warn("Camera load warning: " + err); }
