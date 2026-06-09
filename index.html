@@ -58,7 +58,7 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="bg-gray-50 font-sans text-gray-800 antialiased">
+<body class="bg-gray-50 font-sans text-gray-800 antialiased select-none">
 
     <nav id="master-nav" class="bg-indigo-700 text-white shadow-md no-print sticky top-0 z-50">
         <div class="container mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-3">
@@ -180,18 +180,18 @@
 
             <div id="arena-phase-2" class="hidden flex-1 relative w-full h-full flex flex-col md:flex-row">
                 <div class="flex-1 bg-black relative w-full h-full">
-                    <video id="webcam-hardware-stream" class="absolute w-full h-full object-cover opacity-0 pointer-events-none" autoplay playsinline></video>
+                    <video id="webcam-hardware-stream" class="absolute w-full h-full object-cover opacity-0 pointer-events-none" autoplay playsinline muted></video>
                     <canvas id="vision-processing-canvas" class="absolute w-full h-full object-cover"></canvas>
                     
                     <div class="absolute top-4 left-4 z-30 flex gap-2">
-                        <button id="ctrl-try-scan" onclick="toggleTryScanEngine()" class="bg-cyan-600/90 text-white px-3 py-1.5 text-xs font-bold rounded-full shadow backdrop-blur-md hover:bg-cyan-500">🔬 TRY SCAN (SIMULATOR)</button>
-                        <button onclick="toggleCameraMirrorFlip()" class="bg-slate-800/90 text-white px-3 py-1.5 text-xs font-bold rounded-full shadow backdrop-blur-md hover:bg-slate-700">🔄 Flip Lens</button>
+                        <button id="ctrl-try-scan" onclick="toggleTryScanEngine()" class="bg-cyan-600/90 text-white px-3 py-1.5 text-xs font-bold rounded-full shadow backdrop-blur-md hover:bg-cyan-500">🔬 SIMULATOR</button>
+                        <button onclick="toggleCameraMirrorFlip()" class="bg-slate-800/90 text-white px-3 py-1.5 text-xs font-bold rounded-full shadow backdrop-blur-md hover:bg-slate-700">🔄 Flip Mirror</button>
                     </div>
-                    <div class="absolute bottom-4 left-4 z-30 bg-emerald-600 text-white px-4 py-1.5 rounded-full text-xs font-mono font-bold tracking-widest animate-pulse border border-emerald-400/30">📡 LIVE COMPUTER VISION ACTIVE</div>
+                    <div class="absolute bottom-4 left-4 z-30 bg-emerald-600 text-white px-4 py-1.5 rounded-full text-xs font-mono font-bold tracking-widest animate-pulse border border-emerald-400/30">📡 REAR LENS ACTIVE</div>
                 </div>
 
                 <div class="w-full md:w-80 bg-slate-950 border-t md:border-t-0 md:border-l border-slate-800 flex flex-col justify-between h-2/5 md:h-full z-20">
-                    <div class="p-4 border-b border-slate-800 bg-slate-900/60 flex justify-between items-center">
+                    <div class="p-3 border-b border-slate-800 bg-slate-900/60 flex justify-between items-center">
                         <div>
                             <h3 class="text-xs font-bold tracking-wider text-slate-400 uppercase">Incoming Logs</h3>
                             <p id="p2-live-counter" class="text-xs font-mono font-bold text-indigo-400">0 Responses Ingested</p>
@@ -202,7 +202,7 @@
                         <span class="text-slate-500 italic">No active data packet signatures identified yet...</span>
                     </div>
 
-                    <div class="p-4 border-t border-slate-800 bg-slate-900/40">
+                    <div class="p-3 border-t border-slate-800 bg-slate-900/40">
                         <button onclick="transitionToPhase3()" class="w-full bg-indigo-600 text-white py-3 rounded-xl text-sm font-bold shadow hover:bg-indigo-500 active:scale-98 transition">⏹ FINISH SCANNING</button>
                     </div>
                 </div>
@@ -260,7 +260,12 @@
         let questionLoggedIdsSet = new Set();
         let questionAnswersBufferMap = {};
         
-        // Initialize formal ArUco framework
+        // Mobile-Safe Downscaled Computing Sub-Canvas Architecture
+        const matrixProcessingScaleCanvas = document.createElement('canvas');
+        const matrixProcessingScaleCtx = matrixProcessingScaleCanvas.getContext('2d');
+        matrixProcessingScaleCanvas.width = 320;
+        matrixProcessingScaleCanvas.height = 240;
+        
         const formalArucoDetector = new AR.Detector();
 
         function switchTab(tabId) {
@@ -394,7 +399,7 @@
             }
         }
 
-        // GENERATION SCHEMATIC ENGINES
+        // ARUCO MARKER MATRICES
         function generateOriginalArucoBitsGrid(id) {
             const originalDictionaries = [
                 [1,1,0,1,1,1,0,1,0,0,1,0,1,1,1,1,1,1,1,1,0,0,1,0,0], // ID 0
@@ -459,7 +464,7 @@
                 </div>`).join('');
         }
 
-        // QUIZ RUNNER INTERACTIVE ENVIRONMENT
+        // PLAY ENVIRONMENT CONTROLS
         async function launchQuizEvaluationRunner(quizId, quizTitle) {
             activeQuizFolderId = quizId;
             activeQuestionsArray = await db.questions.where('quizId').equals(quizId).toArray();
@@ -565,31 +570,40 @@
             }
         }
 
-        // STRICT COMPUTER VISION DECODING INFRASTRUCTURE
+        // MOBILE STABLE MATRIX DECODER PIPELINE
         function parsePixelMatrixBufferTelemetry(ctxFrame, w, h) {
             if (!isScannerArmed || isTryScanRunning) return;
-            
-            const rawFrameBufferImage = ctxFrame.getImageData(0, 0, w, h);
-            const detectedMarkersArray = formalArucoDetector.detect(rawFrameBufferImage);
-            
-            if (detectedMarkersArray && detectedMarkersArray.length > 0) {
-                detectedMarkersArray.forEach(marker => {
-                    const extractedId = parseInt(marker.id);
-                    if (extractedId >= 0 && extractedId <= 99) {
-                        const c0 = marker.corners[0], c1 = marker.corners[1];
-                        const deltaY = c1.y - c0.y, deltaX = c1.x - c0.x;
-                        const angleRadians = Math.atan2(deltaY, deltaX);
-                        const angleDegrees = angleRadians * (180 / Math.PI);
-                        
-                        let normalizedChoiceCode = "A";
-                        if (angleDegrees > -45 && angleDegrees <= 45) normalizedChoiceCode = "A";
-                        else if (angleDegrees > 45 && angleDegrees <= 135) normalizedChoiceCode = "B";
-                        else if (angleDegrees > 135 || angleDegrees <= -135) normalizedChoiceCode = "C";
-                        else if (angleDegrees > -135 && angleDegrees <= -45) normalizedChoiceCode = "D";
-                        
-                        registerScannedAnswerTelemetryPacket(extractedId, normalizedChoiceCode);
-                    }
-                });
+            if (w <= 0 || h <= 0) return;
+
+            try {
+                // Keep the processing space locked to a stable 320x240 calculation resolution
+                matrixProcessingScaleCtx.drawImage(ctxFrame.canvas, 0, 0, w, h, 0, 0, 320, 240);
+                const rawFrameBufferImage = matrixProcessingScaleCtx.getImageData(0, 0, 320, 240);
+                
+                const detectedMarkersArray = formalArucoDetector.detect(rawFrameBufferImage);
+                if (detectedMarkersArray && detectedMarkersArray.length > 0) {
+                    detectedMarkersArray.forEach(marker => {
+                        const extractedId = parseInt(marker.id);
+                        if (extractedId >= 0 && extractedId <= 99) {
+                            const c0 = marker.corners[0], c1 = marker.corners[1];
+                            const deltaY = c1.y - c0.y, deltaX = c1.x - c0.x;
+                            const angleRadians = Math.atan2(deltaY, deltaX);
+                            const angleDegrees = angleRadians * (180 / Math.PI);
+                            
+                            let normalizedChoiceCode = "A";
+                            if (angleDegrees > -45 && angleDegrees <= 45) normalizedChoiceCode = "A";
+                            else if (angleDegrees > 45 && angleDegrees <= 135) normalizedChoiceCode = "B";
+                            else if (angleDegrees > 135 || angleDegrees <= -135) normalizedChoiceCode = "C";
+                            else if (angleDegrees > -135 && angleDegrees <= -45) normalizedChoiceCode = "D";
+                            
+                            setTimeout(() => {
+                                registerScannedAnswerTelemetryPacket(extractedId, normalizedChoiceCode);
+                            }, 0);
+                        }
+                    });
+                }
+            } catch (err) {
+                // Silently drop rendering frame updates if mobile aspect ratios scale mid-rotation
             }
         }
 
@@ -618,11 +632,11 @@
             const btn = document.getElementById('ctrl-try-scan');
             if(isTryScanRunning) {
                 isTryScanRunning = false; clearInterval(tryScanTimerInterval);
-                btn.innerText = "🔬 TRY SCAN (SIMULATOR)"; btn.className = "bg-cyan-600/90 text-white px-3 py-1.5 text-xs font-bold rounded-full hover:bg-cyan-500";
+                btn.innerText = "🔬 SIMULATOR"; btn.className = "bg-cyan-600/90 text-white px-3 py-1.5 text-xs font-bold rounded-full hover:bg-cyan-500";
             } else {
                 const rosterList = await db.roster.toArray();
                 if(rosterList.length === 0) { alert("Please seed student profiles first."); return; }
-                isTryScanRunning = true; btn.innerText = "🛑 STOP SIMULATOR"; btn.className = "bg-red-500 text-white px-3 py-1.5 text-xs font-bold rounded-full animate-pulse";
+                isTryScanRunning = true; btn.innerText = "🛑 STOP SIM"; btn.className = "bg-red-500 text-white px-3 py-1.5 text-xs font-bold rounded-full animate-pulse";
                 tryScanTimerInterval = setInterval(() => {
                     const remaining = rosterList.filter(s => !questionLoggedIdsSet.has(s.markerId));
                     if(remaining.length === 0) { clearInterval(tryScanTimerInterval); toggleTryScanEngine(); return; }
@@ -633,7 +647,7 @@
             }
         }
 
-        function toggleCameraMirrorFlip() { isCameraCanvasMirrored = !isCameraCanvasMirrored; }
+        function toggleCameraMirrorFlip() { isCameraCanvasMirrored = !isCameraCameraMirrored; }
 
         async function displayMasterLeaderboard() {
             const container = document.getElementById('master-leaderboard-view'); const scoresList = await db.scores.toArray();
@@ -648,19 +662,39 @@
 
         async function purgeLeaderboardMetrics() { if(confirm("Clear standings?")) { await db.scores.clear(); displayMasterLeaderboard(); } }
 
+        // EXPLICIT MOBILE BACK-FACING CAMERA HARDWARE LOOP
         async function initializeCameraHardwareDecoderStream() {
             const video = document.getElementById('webcam-hardware-stream');
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: { ideal: "environment" }, width: { ideal: 640 }, height: { ideal: 480 } } 
-                });
+                // Strict hardware requests for mobile rear camera alignment
+                const mobileCameraConstraints = {
+                    audio: false,
+                    video: { 
+                        facingMode: { exact: "environment" }, 
+                        width: { ideal: 640 }, 
+                        height: { ideal: 480 } 
+                    }
+                };
+                
+                let stream;
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia(mobileCameraConstraints);
+                } catch (fallbackErr) {
+                    // Fallback to loose environment matching if explicit rear lens arrays block initial access
+                    stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: "environment" } });
+                }
+                
                 video.srcObject = stream;
+                // Force mobile devices to render inline without hijacking standard media layers
+                video.setAttribute("playsinline", true);
+                video.setAttribute("muted", true);
+                video.play();
                 
                 const viewCanvas = document.getElementById('vision-processing-canvas'); 
                 const ctx = viewCanvas.getContext('2d');
                 
                 let lastAnalysisTimestamp = 0;
-                const analysisThrottleInterval = 65; // ~15fps analysis throttle to protect CPU thread loop
+                const analysisThrottleInterval = 85; // Lowered to ~12fps to ensure zero lockups on mobile chips
 
                 function frameRenderProcessingLoop(currentHighResTimestamp) {
                     if (video.videoWidth === 0 || video.videoHeight === 0) {
@@ -671,8 +705,12 @@
                         viewCanvas.width = video.videoWidth; 
                         viewCanvas.height = video.videoHeight; 
                     }
+                    
                     ctx.save();
-                    if(isCameraCanvasMirrored) { ctx.translate(viewCanvas.width, 0); ctx.scale(-1, 1); }
+                    if(isCameraCanvasMirrored) { 
+                        ctx.translate(viewCanvas.width, 0); 
+                        ctx.scale(-1, 1); 
+                    }
                     ctx.drawImage(video, 0, 0, viewCanvas.width, viewCanvas.height); 
                     ctx.restore();
 
@@ -685,7 +723,9 @@
                     requestAnimationFrame(frameRenderProcessingLoop);
                 }
                 requestAnimationFrame(frameRenderProcessingLoop);
-            } catch (err) { console.warn("Camera load warning: " + err); }
+            } catch (err) { 
+                alert("Camera Initialization Blocked: Ensure permissions are active and you are accessing over HTTPS. Details: " + err.message); 
+            }
         }
 
         window.addEventListener('DOMContentLoaded', () => { syncFolderDropdowns(); loadQuizDirectory(); loadRosterCards(); });
