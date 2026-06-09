@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Offline ArUco Toolkit</title>
+    <title>ArUco Live Hub</title>
     
-    <script src="libs/cv.js"></script>
-    <script src="libs/aruco.js"></script>
-    <script src="libs/svggen.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/damianofalcioni/js-aruco2@master/src/cv.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/damianofalcioni/js-aruco2@master/src/aruco.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/damianofalcioni/js-aruco2@master/src/svggen.js"></script>
 
     <style>
         :root {
@@ -47,7 +47,6 @@
             font-weight: bold;
             border-radius: 6px;
             cursor: pointer;
-            transition: 0.2s;
         }
         .tab-btn.active {
             background: var(--primary);
@@ -56,8 +55,6 @@
         .panel { display: none; }
         .panel.active { display: block; }
         
-        /* Generator Styling */
-        .form-group { margin-bottom: 15px; }
         input, button {
             width: 100%;
             padding: 10px;
@@ -80,12 +77,10 @@
         }
         #resultSvg svg { width: 200px; height: 200px; }
 
-        /* Scanner Styling */
         video {
             width: 100%;
             border-radius: 8px;
             background: #000;
-            transform: scaleX(-1); /* Mirror view for natural interaction */
         }
         #scanResult {
             margin-top: 15px;
@@ -99,7 +94,7 @@
 <body>
 
 <div class="container">
-    <h2>ArUco Utility Hub</h2>
+    <h2>ArUco Quiz Base</h2>
     
     <div class="tabs">
         <button class="tab-btn active" onclick="switchTab('generator')">Generator</button>
@@ -108,23 +103,20 @@
 
     <div id="generator" class="panel active">
         <h3>Generate Marker</h3>
-        <div class="form-group">
-            <label for="markerId">Marker ID (0 - 1022):</label>
-            <input type="number" id="markerId" value="0" min="0" max="1022">
-        </div>
+        <label for="markerId">Marker ID (0 - 1022):</label>
+        <input type="number" id="markerId" value="0" min="0" max="1022">
         <button onclick="generateMarker()">Generate SVG</button>
         <div id="resultSvg"></div>
     </div>
 
     <div id="scanner" class="panel">
         <h3>Live Scanner</h3>
-        <video id="webcam" autoplay playsinline></video>
+        <video id="webcam" autoplay playsinline muted></video>
         <div id="scanResult">Status: Scanner Idle</div>
     </div>
 </div>
 
 <script>
-    // --- TAB NAVIGATION ---
     function switchTab(tabId) {
         document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -132,29 +124,23 @@
         document.getElementById(tabId).classList.add('active');
         event.target.classList.add('active');
 
-        if (tabId === 'scanner') {
-            startCamera();
-        } else {
-            stopCamera();
-        }
+        if (tabId === 'scanner') { startCamera(); } else { stopCamera(); }
     }
 
-    // --- GENERATOR LOGIC ---
     function generateMarker() {
         const id = parseInt(document.getElementById('markerId').value) || 0;
         const container = document.getElementById('resultSvg');
-        
-        // Uses js-aruco2's built-in SVG generator (Standard 7x7 ARUCO dictionary)
-        const dictionary = new AR.Dictionary("ARUCO");
-        container.innerHTML = dictionary.generateSVG(id);
+        if (typeof AR !== 'undefined') {
+            const dictionary = new AR.Dictionary("ARUCO");
+            container.innerHTML = dictionary.generateSVG(id);
+        } else {
+            container.innerHTML = "<p style='color:red;'>Error: Library not loaded yet.</p>";
+        }
     }
 
-    // --- SCANNER LOGIC ---
     let videoStream = null;
     let animationFrameId = null;
     let detector = null;
-    
-    // Off-screen canvas helper for extracting video frames locally
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
@@ -162,31 +148,29 @@
         const video = document.getElementById('webcam');
         const resultDiv = document.getElementById('scanResult');
         
-        // Initialize ArUco Detector if not already done
-        if (!detector) {
-            detector = new AR.Detector({ dictionaryName: 'ARUCO' });
+        if (typeof AR === 'undefined') {
+            resultDiv.innerText = "Error: ArUco library failed to load.";
+            return;
         }
+
+        if (!detector) { detector = new AR.Detector({ dictionaryName: 'ARUCO' }); }
 
         try {
             videoStream = await navigator.mediaDevices.getUserMedia({ 
                 video: { facingMode: "environment" } 
             });
             video.srcObject = videoStream;
-            resultDiv.innerText = "Status: Scanning...";
+            resultDiv.innerText = "Status: Camera active. Scanning...";
             animationFrameId = requestAnimationFrame(tick);
         } catch (err) {
-            resultDiv.innerText = "Error: Camera access denied or unavailable.";
+            resultDiv.innerText = "Error: Cannot access camera.";
             console.error(err);
         }
     }
 
     function stopCamera() {
-        if (videoStream) {
-            videoStream.getTracks().forEach(track => track.stop());
-        }
-        if (animationFrameId) {
-            cancelAnimationFrame(animationFrameId);
-        }
+        if (videoStream) { videoStream.getTracks().forEach(track => track.stop()); }
+        if (animationFrameId) { cancelAnimationFrame(animationFrameId); }
         document.getElementById('scanResult').innerText = "Status: Scanner Idle";
     }
 
@@ -195,21 +179,14 @@
         const resultDiv = document.getElementById('scanResult');
 
         if (video.readyState === video.HAVE_ENOUGH_DATA) {
-            // Match canvas size to video frame stream
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
-            
-            // Draw current video frame to hidden canvas
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
             
-            // Extract pure pixel data from canvas
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            
-            // Run the offline detection algorithm
             const markers = detector.detect(imageData);
 
             if (markers.length > 0) {
-                // Grab the ID of the first detected marker
                 resultDiv.innerText = `Detected Marker ID: ${markers[0].id}`;
             } else {
                 resultDiv.innerText = "Status: Scanning (No marker found)...";
