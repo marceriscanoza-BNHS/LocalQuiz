@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ArUco Live Hub</title>
+    <title>ArUco Quiz System</title>
     
     <script src="https://cdn.jsdelivr.net/gh/damianofalcioni/js-aruco2@master/src/cv.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/damianofalcioni/js-aruco2@master/src/aruco.js"></script>
@@ -55,6 +55,8 @@
         .panel { display: none; }
         .panel.active { display: block; }
         
+        .form-group { margin-bottom: 12px; }
+        label { font-weight: 600; font-size: 0.9rem; }
         input, button {
             width: 100%;
             padding: 10px;
@@ -70,53 +72,109 @@
             cursor: pointer;
             border: none;
         }
-        #resultSvg {
-            margin-top: 20px;
+
+        /* Printable Quiz Card Styling */
+        #printCardArea {
+            margin-top: 25px;
             display: flex;
             justify-content: center;
         }
-        #resultSvg svg { width: 200px; height: 200px; }
-
-        video {
-            width: 100%;
-            border-radius: 8px;
-            background: #000;
+        .quiz-card {
+            width: 260px;
+            height: 320px;
+            border: 3px dashed #000;
+            background: #fff;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            box-sizing: border-box;
+            color: #000;
         }
+        .student-name-tag {
+            font-size: 1.3rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            border-bottom: 2px solid #000;
+            width: 100%;
+            text-align: center;
+            padding-bottom: 5px;
+        }
+        .marker-wrapper {
+            position: relative;
+            width: 160px;
+            height: 160px;
+        }
+        .marker-wrapper svg { width: 100%; height: 100%; }
+        .letter-label {
+            position: absolute;
+            font-weight: 900;
+            font-size: 1.6rem;
+        }
+        .letter-label.A { top: -30px; left: 50%; transform: translateX(-50%); }
+        .letter-label.B { right: -30px; top: 50%; transform: translateY(-50%); }
+        .letter-label.C { bottom: -30px; left: 50%; transform: translateX(-50%); }
+        .letter-label.D { left: -30px; top: 50%; transform: translateY(-50%); }
+
+        /* Scanner Feed */
+        video { width: 100%; border-radius: 8px; background: #000; }
         #scanResult {
             margin-top: 15px;
-            padding: 12px;
+            padding: 15px;
             background: #f1f5f9;
             border-left: 4px solid var(--primary);
-            font-weight: bold;
+            font-size: 1.1rem;
         }
+        .roster-info { font-weight: bold; color: var(--primary); }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>ArUco Quiz Base</h2>
+    <h2>ArUco Quiz Hub</h2>
     
     <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('generator')">Generator</button>
-        <button class="tab-btn" onclick="switchTab('scanner')">Scanner</button>
+        <button class="tab-btn active" onclick="switchTab('generator')">Card Generator</button>
+        <button class="tab-btn" onclick="switchTab('scanner')">Quiz Scanner</button>
     </div>
 
     <div id="generator" class="panel active">
-        <h3>Generate Marker</h3>
-        <label for="markerId">Marker ID (0 - 1022):</label>
-        <input type="number" id="markerId" value="0" min="0" max="1022">
-        <button onclick="generateMarker()">Generate SVG</button>
-        <div id="resultSvg"></div>
+        <h3>Create Student Quiz Card</h3>
+        <div class="form-group">
+            <label for="studentName">Student Name:</label>
+            <input type="text" id="studentName" value="John Doe" placeholder="e.g. Alice Smith">
+        </div>
+        <div class="form-group">
+            <label for="markerId">Assigned Marker ID (0 - 100):</label>
+            <input type="number" id="markerId" value="1" min="0" max="100">
+        </div>
+        <button onclick="generateQuizCard()">Generate & Print Layout</button>
+        
+        <div id="printCardArea">
+            </div>
     </div>
 
     <div id="scanner" class="panel">
-        <h3>Live Scanner</h3>
+        <h3>Scan Responses</h3>
         <video id="webcam" autoplay playsinline muted></video>
         <div id="scanResult">Status: Scanner Idle</div>
     </div>
 </div>
 
 <script>
+    // --- CLASS ROSTER CONFIGURATION ---
+    // Match Marker IDs to your actual students here!
+    const studentRoster = {
+        0: "Alice",
+        1: "John Doe",
+        2: "Charlie",
+        3: "Emily",
+        4: "Michael"
+    };
+
+    // --- TAB SYSTEM ---
     function switchTab(tabId) {
         document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -127,17 +185,37 @@
         if (tabId === 'scanner') { startCamera(); } else { stopCamera(); }
     }
 
-    function generateMarker() {
+    // --- GENERATOR LOGIC ---
+    function generateQuizCard() {
+        const name = document.getElementById('studentName').value.trim() || "STUDENT";
         const id = parseInt(document.getElementById('markerId').value) || 0;
-        const container = document.getElementById('resultSvg');
-        if (typeof AR !== 'undefined') {
-            const dictionary = new AR.Dictionary("ARUCO");
-            container.innerHTML = dictionary.generateSVG(id);
-        } else {
-            container.innerHTML = "<p style='color:red;'>Error: Library not loaded yet.</p>";
+        const container = document.getElementById('printCardArea');
+        
+        if (typeof AR === 'undefined') {
+            container.innerHTML = "<p style='color:red;'>Error: Libraries not ready.</p>";
+            return;
         }
+
+        const dictionary = new AR.Dictionary("ARUCO");
+        const svgCode = dictionary.generateSVG(id);
+
+        // Build a structured, printable card with directional labels
+        container.innerHTML = `
+            <div class="quiz-card">
+                <div class="student-name-tag">${name}</div>
+                <div class="marker-wrapper">
+                    <span class="letter-label A">A</span>
+                    <span class="letter-label B">B</span>
+                    <span class="letter-label C">C</span>
+                    <span class="letter-label D">D</span>
+                    ${svgCode}
+                </div>
+                <div style="font-size:0.75rem; color:#666;">Hold selected answer pointing UP</div>
+            </div>
+        `;
     }
 
+    // --- SCANNER & ORIENTATION DETECTION LOGIC ---
     let videoStream = null;
     let animationFrameId = null;
     let detector = null;
@@ -148,11 +226,6 @@
         const video = document.getElementById('webcam');
         const resultDiv = document.getElementById('scanResult');
         
-        if (typeof AR === 'undefined') {
-            resultDiv.innerText = "Error: ArUco library failed to load.";
-            return;
-        }
-
         if (!detector) { detector = new AR.Detector({ dictionaryName: 'ARUCO' }); }
 
         try {
@@ -160,11 +233,10 @@
                 video: { facingMode: "environment" } 
             });
             video.srcObject = videoStream;
-            resultDiv.innerText = "Status: Camera active. Scanning...";
+            resultDiv.innerText = "Status: Ready to scan student answers...";
             animationFrameId = requestAnimationFrame(tick);
         } catch (err) {
-            resultDiv.innerText = "Error: Cannot access camera.";
-            console.error(err);
+            resultDiv.innerText = "Error: Camera unavailable.";
         }
     }
 
@@ -187,9 +259,34 @@
             const markers = detector.detect(imageData);
 
             if (markers.length > 0) {
-                resultDiv.innerText = `Detected Marker ID: ${markers[0].id}`;
-            } else {
-                resultDiv.innerText = "Status: Scanning (No marker found)...";
+                const marker = markers[0];
+                const id = marker.id;
+                const c = marker.corners; // Contains 4 tracking corners: [top-left, top-right, bottom-right, bottom-left]
+
+                // Look up student name from our roster dictionary
+                const studentName = studentRoster[id] || `Unknown Student (ID: ${id})`;
+
+                // --- ORIENTATION MATH ---
+                // We calculate the midpoints of the 4 original edges of the marker grid.
+                // In a browser video frame, Y = 0 is the ceiling. 
+                // Whichever edge midpoint has the LOWEST Y value is physically pointing straight up!
+                const topMidpointY    = (c[0].y + c[1].y) / 2;
+                const rightMidpointY  = (c[1].y + c[2].y) / 2;
+                const bottomMidpointY = (c[2].y + c[3].y) / 2;
+                const leftMidpointY   = (c[3].y + c[0].y) / 2;
+
+                let detectedAnswer = "A";
+                let minY = topMidpointY;
+
+                if (rightMidpointY < minY) { detectedAnswer = "B"; minY = rightMidpointY; }
+                if (bottomMidpointY < minY) { detectedAnswer = "C"; minY = bottomMidpointY; }
+                if (leftMidpointY < minY) { detectedAnswer = "D"; minY = leftMidpointY; }
+
+                // Output Result
+                resultDiv.innerHTML = `
+                    Scan Registered:<br>
+                    <span class="roster-info">${studentName}</span> chose Answer: <strong>${detectedAnswer}</strong>
+                `;
             }
         }
         animationFrameId = requestAnimationFrame(tick);
