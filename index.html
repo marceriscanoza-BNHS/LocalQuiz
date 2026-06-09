@@ -8,16 +8,18 @@
     <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
     <script src="https://cdn.jsdelivr.net/gh/damianofalcioni/js-aruco2@master/src/cv.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/damianofalcioni/js-aruco2@master/src/aruco.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/damianofalcioni/js-aruco2@master/src/svggen.js"></script>
     
     <style>
-        /* 🖨️ CRITICAL FIX: Absolute Half-A4 Page Constraints for Printing */
+        /* 🖨️ Absolute Half-A4 Page Constraints for Printing */
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 0cm; /* Wipes out default browser headers/footers */
+                margin: 0cm; 
             }
             html, body {
                 width: 210mm;
@@ -37,19 +39,19 @@
                 padding: 0 !important;
             }
             #print-area {
-                display: block !important; /* Disables responsive grid during print */
+                display: block !important; 
                 width: 210mm !important;
             }
             .print-card {
                 box-sizing: border-box !important;
                 width: 210mm !important;
-                height: 148.5mm !important; /* Mathematically EXACTLY half of a 297mm A4 page */
+                height: 148.5mm !important; 
                 display: flex !important;
                 flex-direction: column !important;
                 justify-content: space-between !important;
                 align-items: center !important;
-                padding: 25mm 20mm !important; /* Gives breathing room for tracking codes */
-                border: 4px solid #000 !important;
+                padding: 10mm 15mm !important; 
+                border: 6px solid #000 !important;
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
             }
@@ -74,12 +76,15 @@
     <main id="main-content-wrapper" class="container mx-auto p-4 max-w-5xl">
         
         <section id="roster-tab" class="tab-content bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-            <div class="flex justify-between items-center mb-4 no-print">
+            <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4 no-print">
                 <div>
                     <h2 class="text-xl font-bold text-gray-800">Student Profiles & Card Print Setup</h2>
-                    <p class="text-xs text-gray-400 mt-0.5 font-medium">Cards auto-scale to half an A4 page layout (2 cards per sheet) for fast classroom tracking.</p>
+                    <p class="text-xs text-gray-400 mt-0.5 font-medium">Cards feature maximized ArUco tracking boxes with minimal wasted white space.</p>
                 </div>
-                <button onclick="window.print()" class="bg-slate-900 text-white px-5 py-2.5 text-xs font-bold rounded-lg shadow hover:bg-slate-800 transition">🖨️ Print All Cards (Half-A4)</button>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="downloadAllCardsAsZip()" class="bg-indigo-600 text-white px-4 py-2.5 text-xs font-bold rounded-lg shadow hover:bg-indigo-700 transition">📦 Download All (.ZIP)</button>
+                    <button onclick="window.print()" class="bg-slate-900 text-white px-4 py-2.5 text-xs font-bold rounded-lg shadow hover:bg-slate-800 transition">🖨️ Print All Cards (Half-A4)</button>
+                </div>
             </div>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 no-print">
@@ -216,7 +221,7 @@
                 <div class="my-auto space-y-6 max-w-xl mx-auto w-full py-4">
                     <h2 id="p3-question-title-fallback" class="text-lg font-bold text-slate-300 text-center mb-4 truncate"></h2>
                     <div id="p3-analytics-bars-box" class="space-y-3 bg-slate-800/40 p-6 rounded-2xl border border-slate-800 shadow-xl">
-                        </div>
+                    </div>
                 </div>
 
                 <div class="border-t border-slate-800 pt-4 pb-2 flex gap-3 justify-center">
@@ -259,8 +264,6 @@
         
         let questionLoggedIdsSet = new Set();
         let questionAnswersBufferMap = {};
-
-        // Core global detector instance holder for js-aruco engine
         let arucoEngineDetector = null;
 
         function switchTab(tabId) {
@@ -394,7 +397,7 @@
             }
         }
 
-        // 📐 NATIVE STANDARD ARUCO ENGINE INTEGRATION (Replaced mockup layout calculations)
+        // 📐 MAXIMIZED ARUCO GENERATOR MATRIX ENGINE
         function buildArUcoSVGStringMarkup(id) {
             if (typeof AR !== 'undefined') {
                 const dictionary = new AR.Dictionary("ARUCO");
@@ -403,50 +406,117 @@
             return `<div class="text-[10px] text-red-500">Error loading library layout engine</div>`;
         }
 
-        function downloadCardAsPurePNGImage(id, studentName) {
-            const canvas = document.createElement('canvas'); canvas.width = 800; canvas.height = 800; const ctx = canvas.getContext('2d');
-            ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, 800, 800); ctx.lineWidth = 14; ctx.strokeStyle = "#000000"; ctx.strokeRect(0, 0, 800, 800);
-            ctx.fillStyle = "#000000"; ctx.font = "900 72px sans-serif"; ctx.textAlign = "center"; 
-            ctx.fillText("A", 400, 90);
-            ctx.save(); ctx.translate(710, 400); ctx.rotate(Math.PI / 2); ctx.fillText("B", 0, 25); ctx.restore();
-            ctx.save(); ctx.translate(400, 730); ctx.rotate(Math.PI); ctx.fillText("C", 0, 25); ctx.restore();
-            ctx.save(); ctx.translate(90, 400); ctx.rotate(-Math.PI / 2); ctx.fillText("D", 0, 25); ctx.restore();
+        // 💾 HIGH CONFIDENCE SVG TO PNG WORKSPACE GENERATOR (Fixes item 2)
+        function renderAndDownloadCardImage(id, studentName) {
+            const svgElement = document.querySelector(`#marker-node-box-${id} svg`);
+            if(!svgElement) { alert("Marker asset context missing."); return; }
             
-            // Generate standard bits via dictionary
-            if (typeof AR !== 'undefined') {
-                const dictionary = new AR.Dictionary("ARUCO");
-                const bits = dictionary.getBits(id);
-                const matrixBoxSize = 360; const cellSize = matrixBoxSize / 7; const startX = 220; const startY = 220;
-                ctx.fillStyle = "#000000"; ctx.fillRect(startX - 5, startY - 5, matrixBoxSize + 10, matrixBoxSize + 10);
-                for(let r=0; r<7; r++) { 
-                    for(let c=0; c<7; c++) { 
-                        ctx.fillStyle = bits[(r*7)+c] === 0 ? "#000000" : "#ffffff"; 
-                        ctx.fillRect(startX + (c * cellSize), startY + (r * cellSize), cellSize + 1, cellSize + 1); 
-                    } 
+            const rawSvgString = new XMLSerializer().serializeToString(svgElement);
+            const encodedSvgData = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(rawSvgString)));
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = 800; canvas.height = 1000;
+            const ctx = canvas.getContext('2d');
+            
+            // Build card container bounding frame background properties
+            ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, 800, 1000);
+            ctx.lineWidth = 16; ctx.strokeStyle = "#000000"; ctx.strokeRect(0, 0, 800, 1000);
+            
+            // Draw maximized directional answer keys
+            ctx.fillStyle = "#000000"; ctx.font = "900 90px sans-serif"; ctx.textBaseline = "middle"; ctx.textAlign = "center";
+            ctx.fillText("A", 400, 65);
+            ctx.save(); ctx.translate(735, 500); ctx.rotate(Math.PI / 2); ctx.fillText("B", 0, 0); ctx.restore();
+            ctx.save(); ctx.translate(400, 935); ctx.rotate(Math.PI); ctx.fillText("C", 0, 0); ctx.restore();
+            ctx.save(); ctx.translate(65, 500); ctx.rotate(-Math.PI / 2); ctx.fillText("D", 0, 0); ctx.restore();
+            
+            const baseImg = new Image();
+            baseImg.onload = function() {
+                // Maximized marker dimensional draw coordinates
+                ctx.drawImage(baseImg, 130, 150, 540, 540);
+                
+                // Card footers metadata text
+                ctx.fillStyle = "#000000"; ctx.font = "bold 44px sans-serif"; ctx.fillText(studentName.toUpperCase(), 400, 780);
+                ctx.fillStyle = "#6b7280"; ctx.font = "bold 22px monospace"; ctx.fillText(`ARUCO IDENTIFICATION KEY: ${id}`, 400, 835);
+                
+                const downloadLink = document.createElement('a');
+                downloadLink.download = `${studentName.replace(/[^a-z0-9]/gi, '_')}_ID_${id}.png`;
+                downloadLink.href = canvas.toDataURL("image/png");
+                document.body.appendChild(downloadLink); downloadLink.click(); document.body.removeChild(downloadLink);
+            };
+            baseImg.src = encodedSvgData;
+        }
+
+        // 📦 ZIP FILE BULK EXPORT ENGINE (Fixes item 3)
+        async function downloadAllCardsAsZip() {
+            const list = await db.roster.toArray();
+            if(list.length === 0) { alert("Your Student Roster is completely empty."); return; }
+            
+            const zip = new JSZip();
+            let processedCounter = 0;
+            
+            for(let s of list) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 800; canvas.height = 1000;
+                const ctx = canvas.getContext('2d');
+                
+                ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, 800, 1000);
+                ctx.lineWidth = 16; ctx.strokeStyle = "#000000"; ctx.strokeRect(0, 0, 800, 1000);
+                
+                ctx.fillStyle = "#000000"; ctx.font = "900 90px sans-serif"; ctx.textBaseline = "middle"; ctx.textAlign = "center";
+                ctx.fillText("A", 400, 65);
+                ctx.save(); ctx.translate(735, 500); ctx.rotate(Math.PI / 2); ctx.fillText("B", 0, 0); ctx.restore();
+                ctx.save(); ctx.translate(400, 935); ctx.rotate(Math.PI); ctx.fillText("C", 0, 0); ctx.restore();
+                ctx.save(); ctx.translate(65, 500); ctx.rotate(-Math.PI / 2); ctx.fillText("D", 0, 0); ctx.restore();
+                
+                if (typeof AR !== 'undefined') {
+                    const dictionary = new AR.Dictionary("ARUCO");
+                    const bits = dictionary.getBits(s.markerId);
+                    const matrixBoxSize = 540; const cellSize = matrixBoxSize / 7; const startX = 130; const startY = 150;
+                    ctx.fillStyle = "#000000"; ctx.fillRect(startX, startY, matrixBoxSize, matrixBoxSize);
+                    for(let r=0; r<7; r++) { 
+                        for(let c=0; c<7; c++) { 
+                            ctx.fillStyle = bits[(r*7)+c] === 0 ? "#000000" : "#ffffff"; 
+                            ctx.fillRect(startX + (c * cellSize), startY + (r * cellSize), cellSize + 1, cellSize + 1); 
+                        } 
+                    }
                 }
+                
+                ctx.fillStyle = "#000000"; ctx.font = "bold 44px sans-serif"; ctx.fillText(s.name.toUpperCase(), 400, 780);
+                ctx.fillStyle = "#6b7280"; ctx.font = "bold 22px monospace"; ctx.fillText(`ARUCO IDENTIFICATION KEY: ${s.markerId}`, 400, 835);
+                
+                const base64Data = canvas.toDataURL("image/png").split(',')[1];
+                const sanitizedFileName = `${s.name.replace(/[^a-z0-9]/gi, '_')}_ID_${s.markerId}.png`;
+                zip.file(sanitizedFileName, base64Data, {base64: true});
+                processedCounter++;
             }
-            ctx.fillStyle = "#000000"; ctx.font = "bold 32px sans-serif"; ctx.fillText(studentName, 400, 640);
-            ctx.fillStyle = "#71717a"; ctx.font = "bold 16px monospace"; ctx.fillText(`ARUCO MARKER NODE KEY: ${id}`, 400, 680);
-            const link = document.createElement('a'); link.download = `ArUco_Card_800_ID${id}.png`; link.href = canvas.toDataURL("image/png");
-            document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            
+            zip.generateAsync({type:"blob"}).then(function(content) {
+                const downloadLink = document.createElement('a');
+                downloadLink.download = "Classroom_ArUco_Quiz_Cards.zip";
+                downloadLink.href = URL.createObjectURL(content);
+                document.body.appendChild(downloadLink); downloadLink.click(); document.body.removeChild(downloadLink);
+            });
         }
 
         async function loadRosterCards() {
             const container = document.getElementById('print-area'); const list = await db.roster.toArray();
             if(list.length === 0) { container.innerHTML = `<div class="col-span-full text-center text-xs p-8 text-gray-400 border border-dashed rounded-xl">No active roster students discovered.</div>`; return; }
             container.innerHTML = list.map(s => `
-                <div class="print-card bg-white border-2 border-slate-300 rounded-2xl shadow-sm flex flex-col items-center justify-between w-full h-[400px] max-w-md mx-auto relative group fade-in-item">
-                    <div class="absolute top-2 font-black text-2xl text-black no-print-text">A</div>
-                    <div class="absolute right-4 top-1/2 -translate-y-1/2 font-black text-2xl text-black rotate-90 no-print-text">B</div>
-                    <div class="absolute bottom-2 font-black text-2xl text-black rotate-180 no-print-text">C</div>
-                    <div class="absolute left-4 top-1/2 -translate-y-1/2 font-black text-2xl text-black -rotate-90 no-print-text">D</div>
-                    <div class="absolute top-2 right-2 flex gap-1 no-print">
-                        <button onclick="downloadCardAsPurePNGImage(${s.markerId}, '${s.name}')" class="bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded text-[10px] hover:bg-indigo-100">📥 Save PNG</button>
+                <div class="print-card bg-white border-[6px] border-black rounded-2xl shadow-sm flex flex-col items-center justify-between w-full h-[460px] max-w-md mx-auto relative group p-6 fade-in-item">
+                    <div class="absolute top-1.5 font-black text-3xl text-black">A</div>
+                    <div class="absolute right-3.5 top-1/2 -translate-y-1/2 font-black text-3xl text-black rotate-90">B</div>
+                    <div class="absolute bottom-1.5 font-black text-3xl text-black rotate-180">C</div>
+                    <div class="absolute left-3.5 top-1/2 -translate-y-1/2 font-black text-3xl text-black -rotate-90">D</div>
+                    
+                    <div class="absolute top-3 right-3 flex gap-1 no-print">
+                        <button onclick="renderAndDownloadCardImage(${s.markerId}, '${s.name}')" class="bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded text-[10px] hover:bg-indigo-100">📥 Save PNG</button>
                         <button onclick="removeStudentProfile(${s.markerId})" class="bg-red-50 text-red-600 font-bold px-1.5 py-0.5 rounded text-[10px] hover:bg-red-100">✕</button>
                     </div>
-                    <div class="w-48 h-48 p-0.5 flex items-center justify-center my-auto mt-6">${buildArUcoSVGStringMarkup(s.markerId)}</div>
-                    <div class="w-full text-center border-t pt-2 mt-auto">
-                        <h5 class="font-black text-sm text-gray-900 truncate px-4">${s.name}</h5>
+                    
+                    <div id="marker-node-box-${s.markerId}" class="w-64 h-64 p-0.5 flex items-center justify-center my-auto mt-7 transform scale-110">${buildArUcoSVGStringMarkup(s.markerId)}</div>
+                    
+                    <div class="w-full text-center border-t border-gray-100 pt-2 mt-auto">
+                        <h5 class="font-black text-sm text-gray-900 truncate px-4">${s.name.toUpperCase()}</h5>
                         <span class="text-[10px] font-mono text-gray-400 font-bold">NODE ID: ${s.markerId}</span>
                     </div>
                 </div>`).join('');
@@ -561,12 +631,11 @@
         }
 
         // ==========================================
-        // 📷 REAL COMPUTER VISION COMPUTER LOGIC ENGINE 
+        // 📷 COMPUTER VISION DECODING CORE LOOP
         // ==========================================
         function parsePixelMatrixBufferTelemetry(ctxFrame, w, h) {
             if(!isScannerArmed || isTryScanRunning) return;
             
-            // Lazily instantiate detector instance safely when context initializes
             if (!arucoEngineDetector) {
                 if (typeof AR !== 'undefined') {
                     arucoEngineDetector = new AR.Detector({ dictionaryName: 'ARUCO' });
@@ -578,17 +647,13 @@
             const imgData = ctxFrame.getImageData(0, 0, w, h);
             const detectedMarkers = arucoEngineDetector.detect(imgData);
 
-            // Process any identified matrix codes found in frame array bounds
             for (let i = 0; i < detectedMarkers.length; i++) {
                 const marker = detectedMarkers[i];
                 const markerId = marker.id;
                 const corners = marker.corners; 
 
-                // Only log if student belongs to active evaluation rosters
                 db.roster.get(markerId).then(profile => {
                     if (profile && !questionLoggedIdsSet.has(markerId)) {
-                        
-                        // Calculate edge midpoint Y values to look up absolute page canvas ceiling orientation
                         const topEdgeY    = (corners[0].y + corners[1].y) / 2;
                         const rightEdgeY  = (corners[1].y + corners[2].y) / 2;
                         const bottomEdgeY = (corners[2].y + corners[3].y) / 2;
@@ -627,7 +692,6 @@
             document.getElementById('p2-live-counter').innerText = `${questionLoggedIdsSet.size} Responses Ingested`;
         }
 
-        // DEBUG SIMULATOR CONTROL HOOKS
         async function toggleTryScanEngine() {
             const btn = document.getElementById('ctrl-try-scan');
             if(isTryScanRunning) {
@@ -672,11 +736,9 @@
                     if (video.readyState === video.HAVE_ENOUGH_DATA) {
                         if(viewCanvas.width !== video.videoWidth) { viewCanvas.width = video.videoWidth; viewCanvas.height = video.videoHeight; }
                         
-                        // CRITICAL CV PATHWAY FIX: Extract and parse telemetry on RAW unmodified pixels first
                         ctx.drawImage(video, 0, 0, viewCanvas.width, viewCanvas.height);
                         parsePixelMatrixBufferTelemetry(ctx, viewCanvas.width, viewCanvas.height);
                         
-                        // Apply human mirror preference afterward for display comfort if toggled active
                         if(isCameraCanvasMirrored) { 
                             ctx.save();
                             ctx.clearRect(0, 0, viewCanvas.width, viewCanvas.height);
