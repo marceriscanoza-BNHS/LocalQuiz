@@ -199,7 +199,7 @@
                     </div>
 
                     <div id="p2-log-stream" class="flex-1 p-3 overflow-y-auto space-y-1.5 text-xs text-slate-200">
-                        <span class="text-slate-500 italic">No active data packet signatures identified yet...</span>
+                        <span class="text-slate-500 italic">No active data signatures identified yet...</span>
                     </div>
 
                     <div class="p-3 border-t border-slate-800 bg-slate-900/40">
@@ -603,7 +603,7 @@
                     });
                 }
             } catch (err) {
-                // Silently drop rendering frame updates if mobile aspect ratios scale mid-rotation
+                // Silently drop rendering frame updates
             }
         }
 
@@ -647,7 +647,7 @@
             }
         }
 
-        function toggleCameraMirrorFlip() { isCameraCanvasMirrored = !isCameraCameraMirrored; }
+        function toggleCameraMirrorFlip() { isCameraCanvasMirrored = !isCameraCanvasMirrored; }
 
         async function displayMasterLeaderboard() {
             const container = document.getElementById('master-leaderboard-view'); const scoresList = await db.scores.toArray();
@@ -662,48 +662,46 @@
 
         async function purgeLeaderboardMetrics() { if(confirm("Clear standings?")) { await db.scores.clear(); displayMasterLeaderboard(); } }
 
-        // EXPLICIT MOBILE BACK-FACING CAMERA HARDWARE LOOP
+        // REMAPPED EXPLICIT REAL-TIME MOBILE RESOLUTION BINDINGS
         async function initializeCameraHardwareDecoderStream() {
             const video = document.getElementById('webcam-hardware-stream');
             try {
-                // Strict hardware requests for mobile rear camera alignment
-                const mobileCameraConstraints = {
+                const stream = await navigator.mediaDevices.getUserMedia({
                     audio: false,
                     video: { 
-                        facingMode: { exact: "environment" }, 
+                        facingMode: "environment",
                         width: { ideal: 640 }, 
-                        height: { ideal: 480 } 
+                        height: { ideal: 480 }
                     }
-                };
-                
-                let stream;
-                try {
-                    stream = await navigator.mediaDevices.getUserMedia(mobileCameraConstraints);
-                } catch (fallbackErr) {
-                    // Fallback to loose environment matching if explicit rear lens arrays block initial access
-                    stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: "environment" } });
-                }
+                });
                 
                 video.srcObject = stream;
-                // Force mobile devices to render inline without hijacking standard media layers
                 video.setAttribute("playsinline", true);
                 video.setAttribute("muted", true);
-                video.play();
+                await video.play();
                 
                 const viewCanvas = document.getElementById('vision-processing-canvas'); 
                 const ctx = viewCanvas.getContext('2d');
                 
                 let lastAnalysisTimestamp = 0;
-                const analysisThrottleInterval = 85; // Lowered to ~12fps to ensure zero lockups on mobile chips
+                const analysisThrottleInterval = 100; // Stabilized to 10fps for smooth rendering on mobile devices
 
                 function frameRenderProcessingLoop(currentHighResTimestamp) {
-                    if (video.videoWidth === 0 || video.videoHeight === 0) {
+                    // FIX: Query live video track settings directly to prevent stretching
+                    const activeVideoTrack = stream.getVideoTracks()[0];
+                    const hardwareSettings = activeVideoTrack ? activeVideoTrack.getSettings() : null;
+                    
+                    const actualWidth = hardwareSettings?.width || video.videoWidth || 640;
+                    const actualHeight = hardwareSettings?.height || video.videoHeight || 480;
+
+                    if (actualWidth === 0 || actualHeight === 0) {
                         requestAnimationFrame(frameRenderProcessingLoop);
                         return;
                     }
-                    if(viewCanvas.width !== video.videoWidth) { 
-                        viewCanvas.width = video.videoWidth; 
-                        viewCanvas.height = video.videoHeight; 
+
+                    if(viewCanvas.width !== actualWidth || viewCanvas.height !== actualHeight) { 
+                        viewCanvas.width = actualWidth; 
+                        viewCanvas.height = actualHeight; 
                     }
                     
                     ctx.save();
@@ -724,7 +722,7 @@
                 }
                 requestAnimationFrame(frameRenderProcessingLoop);
             } catch (err) { 
-                alert("Camera Initialization Blocked: Ensure permissions are active and you are accessing over HTTPS. Details: " + err.message); 
+                alert("Camera Blocked: Ensure your site is running securely over HTTPS and permissions are allowed. Error: " + err.message); 
             }
         }
 
