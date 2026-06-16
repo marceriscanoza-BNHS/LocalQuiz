@@ -101,7 +101,7 @@
                     <h3 class="font-bold text-xs uppercase tracking-wider text-slate-600 mb-3">Add Profile Manually</h3>
                     <div class="grid grid-cols-3 gap-2 mb-2">
                         <input type="text" id="manual-student-name" placeholder="Student Name" class="col-span-2 border p-2 text-xs rounded-lg bg-white">
-                        <input type="number" id="manual-marker-id" placeholder="ID (0-99)" min="0" max="99" class="border p-2 text-xs rounded-lg bg-white font-mono">
+                        <input type="number" id="manual-marker-id" placeholder="ID (0-999)" min="0" max="999" class="border p-2 text-xs rounded-lg bg-white font-mono">
                     </div>
                     <button onclick="saveManualStudent()" class="w-full bg-emerald-600 text-white py-2 text-xs rounded-lg font-bold hover:bg-emerald-700 transition shadow-sm">Save Student Entry</button>
                 </div>
@@ -297,7 +297,7 @@
                             const nameVal = extractObjectValueByNormalizedKey(row, 'name') || extractObjectValueByNormalizedKey(row, 'studentname');
                             const idVal = extractObjectValueByNormalizedKey(row, 'id') || extractObjectValueByNormalizedKey(row, 'markerid');
                             const markerId = parseInt(idVal);
-                            if(nameVal && !isNaN(markerId) && markerId >= 0 && markerId <= 99) {
+                            if(nameVal && !isNaN(markerId) && markerId >= 0 && markerId <= 999) {
                                 await db.roster.put({ markerId: markerId, name: nameVal.toString().trim() });
                             }
                         }
@@ -343,7 +343,7 @@
             const nameEl = document.getElementById('manual-student-name');
             const idEl = document.getElementById('manual-marker-id');
             const name = nameEl.value.trim(); const id = parseInt(idEl.value);
-            if(!name || isNaN(id) || id < 0 || id > 99) { alert("Provide a valid name and ID scoped between 0 and 99."); return; }
+            if(!name || isNaN(id) || id < 0 || id > 999) { alert("Provide a valid name and ID scoped between 0 and 999."); return; }
             await db.roster.put({ markerId: id, name: name });
             nameEl.value = ''; idEl.value = ''; loadRosterCards();
         }
