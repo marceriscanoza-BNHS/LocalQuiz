@@ -601,20 +601,36 @@
             }
 
             const total = questionLoggedIdsSet.size;
-            document.getElementById('p3-analytics-bars-box').innerHTML = Object.keys(tallies).map(letter => {
-                const percent = Math.round((tallies[letter] / total) * 100) || 0;
-                const isCorrect = letter === currentQ.correctAnswer;
-                return `
-                    <div class="text-xs font-semibold">
-                        <div class="flex justify-between text-slate-300 mb-1">
-                            <span class="${isCorrect ? 'text-green-400 font-black' : ''}">Choice ${letter} ${isCorrect ? '✓' : ''}</span>
-                            <span>${tallies[letter]} entries (${percent}%)</span>
-                        </div>
-                        <div class="w-full bg-slate-900 h-3 rounded-full overflow-hidden border border-slate-800">
-                            <div class="h-full ${isCorrect ? 'bg-green-500' : 'bg-indigo-500'}" style="width: ${percent}%"></div>
-                        </div>
-                    </div>`;
-            }).join('');
+document.getElementById('p3-analytics-bars-box').innerHTML = `
+    <div class="mb-6 p-4 bg-slate-900/60 rounded-xl border border-slate-800 text-left space-y-2">
+        <p class="text-xs font-bold text-indigo-400 tracking-wider uppercase">Question Context:</p>
+        <p class="text-base font-medium text-slate-100 mb-3">${currentQ.question}</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-300">
+            <div class="p-1.5 rounded ${currentQ.correctAnswer === 'A' ? 'text-green-400 font-bold bg-green-950/20 border border-green-900/40' : ''}">A: ${currentQ.choiceA}</div>
+            <div class="p-1.5 rounded ${currentQ.correctAnswer === 'B' ? 'text-green-400 font-bold bg-green-950/20 border border-green-900/40' : ''}">B: ${currentQ.choiceB}</div>
+            <div class="p-1.5 rounded ${currentQ.correctAnswer === 'C' ? 'text-green-400 font-bold bg-green-950/20 border border-green-900/40' : ''}">C: ${currentQ.choiceC}</div>
+            <div class="p-1.5 rounded ${currentQ.correctAnswer === 'D' ? 'text-green-400 font-bold bg-green-950/20 border border-green-900/40' : ''}">D: ${currentQ.choiceD}</div>
+        </div>
+    </div>
+
+    ` + Object.keys(tallies).map(letter => {
+        const percent = Math.round((tallies[letter] / total) * 100) || 0;
+        const isCorrect = letter === currentQ.correctAnswer;
+        const choiceText = currentQ[`choice${letter}`] || ''; 
+        
+        return `
+            <div class="text-xs font-semibold mb-3">
+                <div class="flex justify-between text-slate-300 mb-1">
+                    <span class="${isCorrect ? 'text-green-400 font-black' : ''}">
+                        Choice ${letter}: <span class="font-normal italic text-slate-400">${choiceText}</span> ${isCorrect ? '✓' : ''}
+                    </span>
+                    <span>${tallies[letter]} entries (${percent}%)</span>
+                </div>
+                <div class="w-full bg-slate-900 h-3 rounded-full overflow-hidden border border-slate-800">
+                    <div class="h-full ${isCorrect ? 'bg-green-500' : 'bg-indigo-500'}" style="width: ${percent}%"></div>
+                </div>
+            </div>`;
+    }).join('');
         }
 
         function stepToNextQuestion() {
