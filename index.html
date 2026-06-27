@@ -19,7 +19,8 @@
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 0cm; \n            }
+                margin: 0cm; 
+            }
             html, body {
                 width: 210mm;
                 height: 297mm;
@@ -76,8 +77,8 @@
                     
                     <div class="flex items-center gap-1">
                         <input type="text" id="new-class-node-input" placeholder="New Class Name..." class="bg-indigo-950 border border-indigo-500 text-white rounded-lg px-2 py-1 text-xs focus:outline-none placeholder-indigo-400 w-28 font-medium">
-                        <button onclick="createNewClassNodeUI()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold px-2.5 py-1 text-xs rounded-lg shadow-xs transition" title="Add Class Node">+</button>
-                        <button onclick="deleteCurrentClassNodeUI()" class="bg-red-600 hover:bg-red-500 text-white font-bold px-2 py-1 text-xs rounded-lg shadow-xs transition" title="Delete Active Class Node">✕</button>
+                        <button onclick="createNewClassNodeUI()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold px-2.5 py-1 text-xs rounded-lg shadow-sm transition" title="Add Class Node">+</button>
+                        <button onclick="deleteCurrentClassNodeUI()" class="bg-red-600 hover:bg-red-500 text-white font-bold px-2 py-1 text-xs rounded-lg shadow-sm transition" title="Delete Active Class Node">✕</button>
                     </div>
                 </div>
             </div>
@@ -106,7 +107,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 no-print">
                 <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
                     <h3 class="font-bold text-xs uppercase tracking-wider text-slate-600 mb-1">Bulk Upload Profiles (.csv / .xlsx)</h3>
-                    <p class="text-[11px] text-gray-400 mb-3 leading-relaxed">Headers required exactly: <code class="bg-gray-200 px-1 py-0.5 rounded text-slate-700 font-mono font-bold">Name</code> and <code class="bg-gray-200 px-1 py-0.5 rounded text-slate-700 font-mono font-bold">ID</code> (IDs map up to 999).</p>
+                    <p class="text-[11px] text-gray-400 mb-3 leading-relaxed">Headers required exactly: <code class="bg-gray-200 px-1 py-0.5 rounded text-slate-700 font-mono font-bold">Name</code> and <code class="bg-gray-200 px-1 py-0.5 rounded text-slate-700 font-mono font-bold">ID</code> (IDs map from 0 to 999).</p>
                     <div class="space-y-2">
                         <input type="file" id="roster-file-input" accept=".csv, .xlsx, .xls" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
                         <button onclick="processRosterUpload()" class="w-full bg-indigo-600 text-white py-2 text-xs rounded-lg font-bold hover:bg-indigo-700 transition shadow-sm">Import Roster File</button>
@@ -522,7 +523,6 @@
             }
         }
 
-        // 📐 MAXIMIZED ARUCO GENERATOR MATRIX ENGINE (Supporting Dictionary up to 1000 markers)
         function buildArUcoSVGStringMarkup(id) {
             if (typeof AR !== 'undefined') {
                 const dictionary = new AR.Dictionary("ARUCO");
@@ -629,7 +629,6 @@
                 return;
             }
             
-            // Isolate card loading explicitly to the active class channel selection
             const list = await db.roster.where('className').equals(currentClassName).toArray();
             
             if(list.length === 0) { 
@@ -657,9 +656,6 @@
                 </div>`).join('');
         }
 
-        // ==========================================
-        // 🚀 LIVE RUNNER ARENA FLOW STACK
-        // ==========================================
         async function launchQuizEvaluationRunner(quizId, quizTitle) {
             if(!getSelectedClassName()) { alert("Please pick an active Class Node before launching evaluation frames."); return; }
             activeQuizFolderId = quizId;
@@ -705,7 +701,6 @@
             document.getElementById('arena-phase-2').classList.remove('hidden');
             document.getElementById('arena-phase-3').classList.add('hidden');
             
-            // 🛑 CRITICAL FILTER HOOK: Restrict and clear memory parameters to match ONLY the chosen active class
             activeRosterAllowedIds.clear();
             const currentSelectedClassName = getSelectedClassName();
             document.getElementById('p2-live-class-banner').innerText = `📡 LIVE SCAN ENGINE • TARGETING: ${currentSelectedClassName.toUpperCase()}`;
@@ -718,6 +713,7 @@
             });
         }
 
+        // Channels system arm boolean safely
         function armScannerEngineChannel(armBoolean) {
             isScannerArmed = armBoolean;
             if(!isScannerArmed && isTryScanRunning) toggleTryScanEngine();
@@ -734,7 +730,6 @@
             
             let tallies = { A: 0, B: 0, C: 0, D: 0 };
             
-            // ⭐ ISOLATED SCORING ACTIONS WITH PERSISTED COMPOUND INDEX SEARCHES
             await db.transaction('rw', db.scores, db.roster, async () => {
                 for(let id in questionAnswersBufferMap) {
                     let letter = questionAnswersBufferMap[id];
@@ -782,7 +777,6 @@
                 return;
             }
 
-            // 🎨 RENDER INLINE PANEL DATA FOR AUDIENCE VIEWING WITHOUT CONTEXT LOSS
             document.getElementById('p3-analytics-bars-box').innerHTML = `
                 <div class="mb-6 p-4 bg-slate-900/60 rounded-xl border border-slate-800 text-left space-y-2">
                     <p class="text-xs font-bold text-indigo-400 tracking-wider uppercase">Question Context:</p>
@@ -793,9 +787,7 @@
                         <div class="p-1.5 rounded ${currentQ.correctAnswer === 'C' ? 'text-green-400 font-bold bg-green-950/20 border border-green-900/40' : ''}">C: ${currentQ.choiceC}</div>
                         <div class="p-1.5 rounded ${currentQ.correctAnswer === 'D' ? 'text-green-400 font-bold bg-green-950/20 border border-green-900/40' : ''}">D: ${currentQ.choiceD}</div>
                     </div>
-                </div>
-
-                ` + Object.keys(tallies).map(letter => {
+                </div>` + Object.keys(tallies).map(letter => {
                     const percent = Math.round((tallies[letter] / total) * 100) || 0;
                     const isCorrect = letter === currentQ.correctAnswer;
                     const choiceText = currentQ[`choice${letter}`] || ''; 
@@ -826,9 +818,6 @@
             }
         }
 
-        // ==========================================
-        // 📷 COMPUTER VISION DECODING CORE LOOP
-        // ==========================================
         function parsePixelMatrixBufferTelemetry(ctxFrame, w, h) {
             if(!isScannerArmed || isTryScanRunning) return;
             
@@ -849,7 +838,6 @@
                 const markerId = marker.id;
                 const corners = marker.corners; 
 
-                // 🛑 HIGH PRIVILEGE ISOLATION GUARD: Deny matrix extraction processing if marker key does not exist inside active roster
                 if(!activeRosterAllowedIds.has(markerId)) {
                     continue; 
                 }
@@ -932,8 +920,6 @@
             }
             
             document.getElementById('leaderboard-class-title').innerText = `Active Context Scope Room: ${activeClassName}`;
-            
-            // Isolate telemetry analytics query exclusively to the selected class scope
             const scoresList = await db.scores.where('className').equals(activeClassName).toArray();
             const ranked = scoresList.sort((x, y) => y.score - x.score);
             
