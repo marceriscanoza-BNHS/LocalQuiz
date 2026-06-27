@@ -64,24 +64,7 @@
 
     <nav id="master-nav" class="bg-indigo-700 text-white shadow-md no-print sticky top-0 z-50">
         <div class="container mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-3">
-            <div class="flex items-center gap-3">
-                <h1 class="text-base font-bold tracking-wider flex items-center gap-2">📐 ArUco Classroom Scanner</h1>
-                
-                <div class="flex flex-wrap items-center gap-2 ml-2">
-                    <div class="flex items-center gap-1.5">
-                        <label class="text-[11px] font-bold text-indigo-200 uppercase tracking-wide">Class Node:</label>
-                        <select id="global-class-selector" onchange="handleClassContextSelectionSwitch()" class="bg-indigo-900 text-white border border-indigo-500 rounded-lg px-2.5 py-1 text-xs font-bold shadow-inner focus:outline-none focus:ring-1 focus:ring-white">
-                            <option value="" disabled selected>-- Create a Class --</option>
-                        </select>
-                    </div>
-                    
-                    <div class="flex items-center gap-1">
-                        <input type="text" id="new-class-node-input" placeholder="New Class Name..." class="bg-indigo-950 border border-indigo-500 text-white rounded-lg px-2 py-1 text-xs focus:outline-none placeholder-indigo-400 w-28 font-medium">
-                        <button onclick="createNewClassNodeUI()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold px-2.5 py-1 text-xs rounded-lg shadow-sm transition" title="Add Class Node">+</button>
-                        <button onclick="deleteCurrentClassNodeUI()" class="bg-red-600 hover:bg-red-500 text-white font-bold px-2 py-1 text-xs rounded-lg shadow-sm transition" title="Delete Active Class Node">✕</button>
-                    </div>
-                </div>
-            </div>
+            <h1 class="text-base font-bold tracking-wider flex items-center gap-2">📐 ArUco Classroom Scanner</h1>
             <div class="flex flex-wrap gap-1.5 text-xs">
                 <button onclick="switchTab('roster-tab')" class="px-3 py-2 rounded bg-indigo-800 font-medium hover:bg-indigo-900 transition">Group Roster</button>
                 <button onclick="switchTab('quiz-tab')" class="px-3 py-2 rounded bg-indigo-800 font-medium hover:bg-indigo-900 transition">Quiz Folder Bank</button>
@@ -107,7 +90,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 no-print">
                 <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
                     <h3 class="font-bold text-xs uppercase tracking-wider text-slate-600 mb-1">Bulk Upload Profiles (.csv / .xlsx)</h3>
-                    <p class="text-[11px] text-gray-400 mb-3 leading-relaxed">Headers required exactly: <code class="bg-gray-200 px-1 py-0.5 rounded text-slate-700 font-mono font-bold">Name</code> and <code class="bg-gray-200 px-1 py-0.5 rounded text-slate-700 font-mono font-bold">ID</code> (IDs map from 0 to 999).</p>
+                    <p class="text-[11px] text-gray-400 mb-3 leading-relaxed">Headers required exactly: <code class="bg-gray-200 px-1 py-0.5 rounded text-slate-700 font-mono font-bold">Name</code> and <code class="bg-gray-200 px-1 py-0.5 rounded text-slate-700 font-mono font-bold">ID</code> (IDs map from 0 to 99).</p>
                     <div class="space-y-2">
                         <input type="file" id="roster-file-input" accept=".csv, .xlsx, .xls" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
                         <button onclick="processRosterUpload()" class="w-full bg-indigo-600 text-white py-2 text-xs rounded-lg font-bold hover:bg-indigo-700 transition shadow-sm">Import Roster File</button>
@@ -181,10 +164,7 @@
             
             <div id="arena-phase-1" class="flex-1 flex flex-col p-6 justify-between max-w-4xl mx-auto w-full">
                 <div class="flex justify-between items-center text-xs tracking-widest text-indigo-400 font-bold font-mono border-b border-slate-800 pb-3">
-                    <div class="flex gap-2">
-                        <span id="p1-title-card">QUIZ RUNNER ACTIVE</span>
-                        <span id="p1-class-tag" class="text-white bg-slate-800 px-2 py-0.5 rounded text-[10px]"></span>
-                    </div>
+                    <span id="p1-title-card">QUIZ RUNNER ACTIVE</span>
                     <button onclick="exitFullscreenQuizArena()" class="text-red-400 bg-red-950/40 border border-red-900 px-3 py-1 rounded-lg hover:bg-red-900 hover:text-white transition">✕ Close Arena</button>
                 </div>
                 
@@ -212,7 +192,7 @@
                         <button id="ctrl-try-scan" onclick="toggleTryScanEngine()" class="bg-cyan-600/90 text-white px-3 py-1.5 text-xs font-bold rounded-full shadow backdrop-blur-md hover:bg-cyan-500">🔬 TRY SCAN (SIMULATOR)</button>
                         <button onclick="toggleCameraMirrorFlip()" class="bg-slate-800/90 text-white px-3 py-1.5 text-xs font-bold rounded-full shadow backdrop-blur-md hover:bg-slate-700">🔄 Flip Lens</button>
                     </div>
-                    <div id="p2-live-class-banner" class="absolute bottom-4 left-4 z-30 bg-emerald-600 text-white px-4 py-1.5 rounded-full text-xs font-mono font-bold tracking-widest animate-pulse border border-emerald-400/30">📡 LIVE DECODING</div>
+                    <div class="absolute bottom-4 left-4 z-30 bg-emerald-600 text-white px-4 py-1.5 rounded-full text-xs font-mono font-bold tracking-widest animate-pulse border border-emerald-400/30">📡 LIVE ENGINE DECODING SCANNER</div>
                 </div>
 
                 <div class="w-full md:w-80 bg-slate-950 border-t md:border-t-0 md:border-l border-slate-800 flex flex-col justify-between h-2/5 md:h-full z-20">
@@ -239,7 +219,7 @@
                 </div>
 
                 <div class="my-auto space-y-6 max-w-xl mx-auto w-full py-4">
-                    <h2 id="p3-question-title-fallback" class="text-lg font-bold text-slate-300 text-center mb-4 truncate hidden"></h2>
+                    <h2 id="p3-question-title-fallback" class="text-lg font-bold text-slate-300 text-center mb-4 truncate"></h2>
                     <div id="p3-analytics-bars-box" class="space-y-3 bg-slate-800/40 p-6 rounded-2xl border border-slate-800 shadow-xl">
                     </div>
                 </div>
@@ -255,9 +235,9 @@
             <div class="flex justify-between items-center border-b pb-3 mb-4">
                 <div>
                     <h2 class="text-xl font-bold text-gray-800">🏆 Assessment Leaderboard</h2>
-                    <p id="leaderboard-class-title" class="text-xs text-gray-400 font-medium">Rankings refresh instantly at the conclusion of active testing tracks.</p>
+                    <p class="text-xs text-gray-400 font-medium">Rankings refresh instantly at the conclusion of active testing tracks.</p>
                 </div>
-                <button onclick="purgeLeaderboardMetrics()" class="bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 text-xs rounded-lg font-bold hover:bg-red-100 transition">Reset Class Standings</button>
+                <button onclick="purgeLeaderboardMetrics()" class="bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 text-xs rounded-lg font-bold hover:bg-red-100 transition">Reset All Standings</button>
             </div>
             <div id="master-leaderboard-view" class="space-y-2 max-w-md mx-auto"></div>
         </section>
@@ -274,10 +254,10 @@
             scores: "studentName, score"
         });
 
-        // Explicitly open database and catch version conflicts gracefully
+        // Open connection explicitly and check for any version/table issues
         db.open().catch(function (err) {
-            console.error("Failed to open IndexedDB database: ", err.stack || err);
-            if (confirm("Database version conflict detected. Would you like to reset the local storage database to fix this?")) {
+            console.error("Database connection failure: ", err.stack || err);
+            if (confirm("Local database conflict detected. Would you like to clear the application storage to repair this error?")) {
                 db.delete().then(() => window.location.reload());
             }
         });
@@ -331,7 +311,7 @@
                             }
                         }
                     }).then(() => { input.value = ''; loadRosterCards(); alert("Roster loaded successfully."); })
-                    .catch(err => alert("Database write failed: " + err.message));
+                    .catch(err => alert("Database transmission failed: " + err.message));
                 } catch(err) { alert("Error reading spreadsheet: " + err.message); }
             };
             reader.readAsArrayBuffer(file);
@@ -364,7 +344,7 @@
                             }
                         }
                     }).then(() => { input.value = ''; loadQuizDirectory(); alert("Questions imported successfully."); })
-                    .catch(err => alert("Database transaction failed: " + err.message));
+                    .catch(err => alert("Database write failed: " + err.message));
                 } catch(err) { alert("Parser file error: " + err.message); }
             };
             reader.readAsArrayBuffer(file);
@@ -378,7 +358,7 @@
             try {
                 await db.roster.put({ markerId: id, name: name });
                 nameEl.value = ''; idEl.value = ''; 
-                loadRosterCards();
+                await loadRosterCards();
             } catch (err) {
                 alert("Could not save student profile: " + err.message);
             }
@@ -394,7 +374,7 @@
             try {
                 await db.questions.add({ quizId: folderId, question: questionText, choiceA: a, choiceB: b, choiceC: c, choiceD: d, correctAnswer: correct });
                 document.getElementById('mq-text').value = ''; document.getElementById('mq-a').value = ''; document.getElementById('mq-b').value = ''; document.getElementById('mq-c').value = ''; document.getElementById('mq-d').value = ''; document.getElementById('mq-correct').value = '';
-                loadQuizDirectory(); alert("Manual entry question stored successfully.");
+                await loadQuizDirectory(); alert("Manual entry question stored successfully.");
             } catch (err) {
                 alert("Could not save question node: " + err.message);
             }
@@ -405,10 +385,10 @@
             try {
                 await db.quizzes.add({ title: title }); 
                 el.value = ''; 
-                syncFolderDropdowns(); 
-                loadQuizDirectory();
+                await syncFolderDropdowns(); 
+                await loadQuizDirectory();
             } catch (err) {
-                alert("Could not create folder: " + err.message);
+                alert("Could not create folder track: " + err.message);
             }
         }
 
@@ -426,7 +406,7 @@
                     drop.innerHTML = '<option value="">-- Choose Quiz Destination --</option>';
                     folders.forEach(f => { drop.innerHTML += `<option value="${f.id}">${f.title}</option>`; });
                 });
-            } catch (e) { console.error(e); }
+            } catch (e) { console.error("Dropdown sync failure: ", e); }
         }
 
         async function loadQuizDirectory() {
@@ -445,9 +425,10 @@
                             </div>
                         </div>`;
                 }
-            } catch (e) { console.error(e); }
+            } catch (e) { console.error("Directory render failure: ", e); }
         }
 
+        // 📐 MAXIMIZED ARUCO GENERATOR MATRIX ENGINE
         function buildArUcoSVGStringMarkup(id) {
             if (typeof AR !== 'undefined') {
                 try {
@@ -474,12 +455,15 @@
         function drawCardToCanvasContext(ctx, markerImageElement, studentName, id) {
             ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, 800, 1000);
             ctx.lineWidth = 16; ctx.strokeStyle = "#000000"; ctx.strokeRect(0, 0, 800, 1000);
+            
             ctx.fillStyle = "#000000"; ctx.font = "900 90px sans-serif"; ctx.textBaseline = "middle"; ctx.textAlign = "center";
             ctx.fillText("A", 400, 65);
             ctx.save(); ctx.translate(735, 500); ctx.rotate(Math.PI / 2); ctx.fillText("B", 0, 0); ctx.restore();
             ctx.save(); ctx.translate(400, 935); ctx.rotate(Math.PI); ctx.fillText("C", 0, 0); ctx.restore();
             ctx.save(); ctx.translate(65, 500); ctx.rotate(-Math.PI / 2); ctx.fillText("D", 0, 0); ctx.restore();
+            
             ctx.drawImage(markerImageElement, 130, 150, 540, 540);
+            
             ctx.fillStyle = "#000000"; ctx.font = "bold 44px sans-serif"; ctx.fillText(studentName.toUpperCase(), 400, 780);
             ctx.fillStyle = "#6b7280"; ctx.font = "bold 22px monospace"; ctx.fillText(`ARUCO IDENTIFICATION KEY: ${id}`, 400, 835);
         }
@@ -544,7 +528,7 @@
                             <span class="text-[10px] font-mono text-gray-400 font-bold">NODE ID: ${s.markerId}</span>
                         </div>
                     </div>`).join('');
-            } catch (e) { console.error(e); }
+            } catch (e) { console.error("Roster display failure: ", e); }
         }
 
         async function launchQuizEvaluationRunner(quizId, quizTitle) {
@@ -762,11 +746,7 @@
             } catch (err) { console.warn("Camera load warning: " + err); }
         }
 
-        // 🚀 SAFE INSTANT INITIALIZATION SETUP
-        // Runs immediately since script is at bottom of DOM; avoids late DOMContentLoaded event miss
-        syncFolderDropdowns(); 
-        loadQuizDirectory(); 
-        loadRosterCards();
+        window.addEventListener('DOMContentLoaded', () => { syncFolderDropdowns(); loadQuizDirectory(); loadRosterCards(); });
     </script>
 </body>
 </html>
