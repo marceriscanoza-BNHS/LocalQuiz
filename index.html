@@ -19,8 +19,7 @@
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 0cm; 
-            }
+                margin: 0cm; \n            }
             html, body {
                 width: 210mm;
                 height: 297mm;
@@ -66,22 +65,22 @@
         <div class="container mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-3">
             <div class="flex items-center gap-3">
                 <h1 class="text-base font-bold tracking-wider flex items-center gap-2">📐 ArUco Classroom Scanner</h1>
+                
                 <div class="flex flex-wrap items-center gap-2 ml-2">
-    <div class="flex items-center gap-1.5">
-        <label class="text-[11px] font-bold text-indigo-200 uppercase tracking-wide">Class Node:</label>
-        <select id="global-class-selector" onchange="handleClassContextSelectionSwitch()" class="bg-indigo-900 text-white border border-indigo-500 rounded-lg px-2.5 py-1 text-xs font-bold shadow-inner focus:outline-none focus:ring-1 focus:ring-white">
-            <option value="Class A">Class A</option>
-            <option value="Class B">Class B</option>
-            <option value="Class C">Class C</option>
-            <option value="Class D">Class D</option>
-        </select>
-    </div>
-    
-    <div class="flex items-center gap-1">
-        <input type="text" id="new-class-node-input" placeholder="New Class Name..." class="bg-indigo-950 border border-indigo-500 text-white rounded-lg px-2 py-1 text-xs focus:outline-none placeholder-indigo-400 w-28 font-medium">
-        <button onclick="createNewClassNodeUI()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold px-2.5 py-1 text-xs rounded-lg shadow-xs transition" title="Add Class Node">+</button>
-    </div>
-</div>
+                    <div class="flex items-center gap-1.5">
+                        <label class="text-[11px] font-bold text-indigo-200 uppercase tracking-wide">Class Node:</label>
+                        <select id="global-class-selector" onchange="handleClassContextSelectionSwitch()" class="bg-indigo-900 text-white border border-indigo-500 rounded-lg px-2.5 py-1 text-xs font-bold shadow-inner focus:outline-none focus:ring-1 focus:ring-white">
+                            <option value="" disabled selected>-- Create a Class --</option>
+                        </select>
+                    </div>
+                    
+                    <div class="flex items-center gap-1">
+                        <input type="text" id="new-class-node-input" placeholder="New Class Name..." class="bg-indigo-950 border border-indigo-500 text-white rounded-lg px-2 py-1 text-xs focus:outline-none placeholder-indigo-400 w-28 font-medium">
+                        <button onclick="createNewClassNodeUI()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold px-2.5 py-1 text-xs rounded-lg shadow-xs transition" title="Add Class Node">+</button>
+                        <button onclick="deleteCurrentClassNodeUI()" class="bg-red-600 hover:bg-red-500 text-white font-bold px-2 py-1 text-xs rounded-lg shadow-xs transition" title="Delete Active Class Node">✕</button>
+                    </div>
+                </div>
+            </div>
             <div class="flex flex-wrap gap-1.5 text-xs">
                 <button onclick="switchTab('roster-tab')" class="px-3 py-2 rounded bg-indigo-800 font-medium hover:bg-indigo-900 transition">Group Roster</button>
                 <button onclick="switchTab('quiz-tab')" class="px-3 py-2 rounded bg-indigo-800 font-medium hover:bg-indigo-900 transition">Quiz Folder Bank</button>
@@ -300,45 +299,80 @@
             loadRosterCards();
             displayMasterLeaderboard();
         }
-function getSelectedClassName() {
-    return document.getElementById('global-class-selector').value;
-}
 
-function handleClassContextSelectionSwitch() {
-    loadRosterCards();
-    displayMasterLeaderboard();
-}
-
-// PASTE IT ONCE RIGHT HERE:
-function createNewClassNodeUI() {
-    const inputEl = document.getElementById('new-class-node-input');
-    const className = inputEl.value.trim();
-    
-    if (!className) {
-        alert("Please type a valid class name first.");
-        return;
-    }
-    
-    const selector = document.getElementById('global-class-selector');
-    
-    for (let i = 0; i < selector.options.length; i++) {
-        if (selector.options[i].value.toLowerCase() === className.toLowerCase()) {
-            alert("This class node already exists.");
-            return;
+        // 🆕 Dynamic Class Node Generation Handler
+        function createNewClassNodeUI() {
+            const inputEl = document.getElementById('new-class-node-input');
+            const className = inputEl.value.trim();
+            
+            if (!className) {
+                alert("Please type a valid class name first.");
+                return;
+            }
+            
+            const selector = document.getElementById('global-class-selector');
+            
+            // Check if class already exists
+            for (let i = 0; i < selector.options.length; i++) {
+                if (selector.options[i].value.toLowerCase() === className.toLowerCase()) {
+                    alert("This class node already exists.");
+                    return;
+                }
+            }
+            
+            // Remove the placeholder option if it's the first time adding a class
+            if (selector.options.length > 0 && selector.options[0].value === "") {
+                selector.remove(0);
+            }
+            
+            const newOption = document.createElement('option');
+            newOption.value = className;
+            newOption.text = className;
+            selector.appendChild(newOption);
+            
+            selector.value = className;
+            inputEl.value = '';
+            handleClassContextSelectionSwitch();
+            
+            alert(`Successfully generated "${className}" workspace node!`);
         }
-    }
-    
-    const newOption = document.createElement('option');
-    newOption.value = className;
-    newOption.text = className;
-    selector.appendChild(newOption);
-    
-    selector.value = className;
-    inputEl.value = '';
-    handleClassContextSelectionSwitch();
-    
-    alert(`Successfully generated "${className}" workspace node!`);
-}
+
+        // 🆕 Dynamic Class Node Remover Handler
+        async function deleteCurrentClassNodeUI() {
+            const selector = document.getElementById('global-class-selector');
+            const currentClass = selector.value;
+            
+            if (!currentClass || selector.options[selector.selectedIndex].disabled) {
+                alert("There is no active class to delete.");
+                return;
+            }
+            
+            const doubleCheck = confirm(`⚠️ DANGER: Are you absolutely sure you want to delete "${currentClass}"?\n\nThis will permanently clear its entire student roster and all accumulated leaderboard records!`);
+            if (!doubleCheck) return;
+            
+            // 1. Clear database entries tied to deleted node
+            await db.roster.where('className').equals(currentClass).delete();
+            await db.scores.where('className').equals(currentClass).delete();
+            
+            // 2. Clear element from selector
+            selector.remove(selector.selectedIndex);
+            
+            // 3. Fallback handle if no options remain
+            if (selector.options.length === 0) {
+                const placeholder = document.createElement('option');
+                placeholder.value = "";
+                placeholder.text = "-- Create a Class --";
+                placeholder.disabled = true;
+                placeholder.selected = true;
+                selector.appendChild(placeholder);
+            } else {
+                selector.selectedIndex = 0;
+            }
+            
+            handleClassContextSelectionSwitch();
+            alert(`Successfully deleted "${currentClass}" and all of its associated records.`);
+        }
+
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(tabId).classList.remove('hidden');
@@ -356,11 +390,13 @@ function createNewClassNodeUI() {
         }
 
         function processRosterUpload() {
+            const currentClassName = getSelectedClassName();
+            if(!currentClassName) { alert("Please initialize or select a Class Node workspace first."); return; }
+            
             const input = document.getElementById('roster-file-input');
             if(!input.files.length) { alert("Please select a valid Roster file."); return; }
             const file = input.files[0];
             const reader = new FileReader();
-            const currentClassName = getSelectedClassName();
             
             reader.onload = function(e) {
                 try {
@@ -419,10 +455,12 @@ function createNewClassNodeUI() {
         }
 
         async function saveManualStudent() {
+            const currentClassName = getSelectedClassName();
+            if(!currentClassName) { alert("Please initialize or select a Class Node workspace first."); return; }
+            
             const nameEl = document.getElementById('manual-student-name');
             const idEl = document.getElementById('manual-marker-id');
             const name = nameEl.value.trim(); const id = parseInt(idEl.value);
-            const currentClassName = getSelectedClassName();
             if(!name || isNaN(id) || id < 0 || id > 999) { alert("Provide a valid name and ID scoped between 0 and 999."); return; }
             
             await db.roster.put({ className: currentClassName, markerId: id, name: name });
@@ -447,8 +485,9 @@ function createNewClassNodeUI() {
         }
 
         async function removeStudentProfile(markerId) { 
+            const currentClassName = getSelectedClassName();
             if(confirm("Permanently wipe this student out of the active class structure?")) { 
-                await db.roster.delete([getSelectedClassName(), markerId]); 
+                await db.roster.delete([currentClassName, markerId]); 
                 loadRosterCards(); 
             } 
         }
@@ -545,8 +584,11 @@ function createNewClassNodeUI() {
         }
 
         async function downloadAllCardsAsZip() {
-            const list = await db.roster.where('className').equals(getSelectedClassName()).toArray();
-            if(list.length === 0) { alert(`Your Roster for ${getSelectedClassName()} is completely empty.`); return; }
+            const currentClassName = getSelectedClassName();
+            if(!currentClassName) { alert("Please select an active Class Node first."); return; }
+            
+            const list = await db.roster.where('className').equals(currentClassName).toArray();
+            if(list.length === 0) { alert(`Your Roster for ${currentClassName} is completely empty.`); return; }
             
             const zip = new JSZip();
             
@@ -572,7 +614,7 @@ function createNewClassNodeUI() {
             
             zip.generateAsync({type:"blob"}).then(function(content) {
                 const downloadLink = document.createElement('a');
-                downloadLink.download = `ArUco_Quiz_Cards_${getSelectedClassName().replace(/\s+/g, '_')}.zip`;
+                downloadLink.download = `ArUco_Quiz_Cards_${currentClassName.replace(/\s+/g, '_')}.zip`;
                 downloadLink.href = URL.createObjectURL(content);
                 document.body.appendChild(downloadLink); downloadLink.click(); document.body.removeChild(downloadLink);
             });
@@ -581,6 +623,12 @@ function createNewClassNodeUI() {
         async function loadRosterCards() {
             const container = document.getElementById('print-area'); 
             const currentClassName = getSelectedClassName();
+            
+            if(!currentClassName) {
+                container.innerHTML = `<div class="col-span-full text-center text-xs p-8 text-gray-400 border border-dashed rounded-xl">No active workspace loaded. Initialize a class node in the navbar above to get started.</div>`;
+                return;
+            }
+            
             // Isolate card loading explicitly to the active class channel selection
             const list = await db.roster.where('className').equals(currentClassName).toArray();
             
@@ -613,6 +661,7 @@ function createNewClassNodeUI() {
         // 🚀 LIVE RUNNER ARENA FLOW STACK
         // ==========================================
         async function launchQuizEvaluationRunner(quizId, quizTitle) {
+            if(!getSelectedClassName()) { alert("Please pick an active Class Node before launching evaluation frames."); return; }
             activeQuizFolderId = quizId;
             activeQuestionsArray = await db.questions.where('quizId').equals(quizId).toArray();
             questionCursorIndex = 0;
@@ -829,7 +878,10 @@ function createNewClassNodeUI() {
             if(!isScannerArmed) return;
             if(questionLoggedIdsSet.has(markerId)) return;
             
-            const profile = await db.roster.get([getSelectedClassName(), markerId]); 
+            const currentClass = getSelectedClassName();
+            if(!currentClass) return;
+
+            const profile = await db.roster.get([currentClass, markerId]); 
             if(!profile) return;
 
             questionLoggedIdsSet.add(markerId);
@@ -853,8 +905,10 @@ function createNewClassNodeUI() {
                 isTryScanRunning = false; clearInterval(tryScanTimerInterval);
                 btn.innerText = "🔬 TRY SCAN (SIMULATOR)"; btn.className = "bg-cyan-600/90 text-white px-3 py-1.5 text-xs font-bold rounded-full hover:bg-cyan-500";
             } else {
-                const rosterList = await db.roster.where('className').equals(getSelectedClassName()).toArray();
-                if(rosterList.length === 0) { alert(`Please seed student profiles under ${getSelectedClassName()} first.`); return; }
+                const currentClass = getSelectedClassName();
+                if(!currentClass) { alert("Please pick or setup a Class Node workspace first."); return; }
+                const rosterList = await db.roster.where('className').equals(currentClass).toArray();
+                if(rosterList.length === 0) { alert(`Please seed student profiles under ${currentClass} first.`); return; }
                 isTryScanRunning = true; btn.innerText = "🛑 STOP SIMULATOR"; btn.className = "bg-red-500 text-white px-3 py-1.5 text-xs font-bold rounded-full animate-pulse";
                 tryScanTimerInterval = setInterval(() => {
                     const remaining = rosterList.filter(s => !questionLoggedIdsSet.has(s.markerId));
@@ -871,6 +925,12 @@ function createNewClassNodeUI() {
         async function displayMasterLeaderboard() {
             const container = document.getElementById('master-leaderboard-view'); 
             const activeClassName = getSelectedClassName();
+            
+            if(!activeClassName) {
+                container.innerHTML = `<div class="text-xs text-gray-400 italic text-center p-8 bg-slate-50 border border-dashed rounded-xl">Initialize an active Class Node from the workspace layout navbar tool above.</div>`;
+                return;
+            }
+            
             document.getElementById('leaderboard-class-title').innerText = `Active Context Scope Room: ${activeClassName}`;
             
             // Isolate telemetry analytics query exclusively to the selected class scope
@@ -890,6 +950,7 @@ function createNewClassNodeUI() {
 
         async function purgeLeaderboardMetrics() { 
             const targetClass = getSelectedClassName();
+            if(!targetClass) return;
             if(confirm(`Wipe all leaderboard standings out permanently for ${targetClass}?`)) { 
                 await db.scores.where('className').equals(targetClass).delete(); 
                 displayMasterLeaderboard(); 
@@ -905,10 +966,18 @@ function createNewClassNodeUI() {
                 function frameRenderProcessingLoop() {
                     if (video.readyState === video.HAVE_ENOUGH_DATA) {
                         if(viewCanvas.width !== video.videoWidth) { viewCanvas.width = video.videoWidth; viewCanvas.height = video.videoHeight; }
-                        ctx.save();
-                        if(isCameraCanvasMirrored) { ctx.translate(viewCanvas.width, 0); ctx.scale(-1, 1); }
-                        ctx.drawImage(video, 0, 0, viewCanvas.width, viewCanvas.height); ctx.restore();
+                        
+                        ctx.drawImage(video, 0, 0, viewCanvas.width, viewCanvas.height);
                         parsePixelMatrixBufferTelemetry(ctx, viewCanvas.width, viewCanvas.height);
+                        
+                        if(isCameraCanvasMirrored) { 
+                            ctx.save();
+                            ctx.clearRect(0, 0, viewCanvas.width, viewCanvas.height);
+                            ctx.translate(viewCanvas.width, 0); 
+                            ctx.scale(-1, 1); 
+                            ctx.drawImage(video, 0, 0, viewCanvas.width, viewCanvas.height); 
+                            ctx.restore();
+                        }
                     }
                     requestAnimationFrame(frameRenderProcessingLoop);
                 }
