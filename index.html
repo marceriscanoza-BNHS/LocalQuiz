@@ -66,16 +66,22 @@
         <div class="container mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-3">
             <div class="flex items-center gap-3">
                 <h1 class="text-base font-bold tracking-wider flex items-center gap-2">📐 ArUco Classroom Scanner</h1>
-                <div class="flex items-center gap-1.5 ml-2">
-                    <label class="text-[11px] font-bold text-indigo-200 uppercase tracking-wide">Class Node:</label>
-                    <select id="global-class-selector" onchange="handleClassContextSelectionSwitch()" class="bg-indigo-900 text-white border border-indigo-500 rounded-lg px-2.5 py-1 text-xs font-bold shadow-inner focus:outline-none focus:ring-1 focus:ring-white">
-                        <option value="Class A">Class A</option>
-                        <option value="Class B">Class B</option>
-                        <option value="Class C">Class C</option>
-                        <option value="Class D">Class D</option>
-                    </select>
-                </div>
-            </div>
+                <div class="flex flex-wrap items-center gap-2 ml-2">
+    <div class="flex items-center gap-1.5">
+        <label class="text-[11px] font-bold text-indigo-200 uppercase tracking-wide">Class Node:</label>
+        <select id="global-class-selector" onchange="handleClassContextSelectionSwitch()" class="bg-indigo-900 text-white border border-indigo-500 rounded-lg px-2.5 py-1 text-xs font-bold shadow-inner focus:outline-none focus:ring-1 focus:ring-white">
+            <option value="Class A">Class A</option>
+            <option value="Class B">Class B</option>
+            <option value="Class C">Class C</option>
+            <option value="Class D">Class D</option>
+        </select>
+    </div>
+    
+    <div class="flex items-center gap-1">
+        <input type="text" id="new-class-node-input" placeholder="New Class Name..." class="bg-indigo-950 border border-indigo-500 text-white rounded-lg px-2 py-1 text-xs focus:outline-none placeholder-indigo-400 w-28 font-medium">
+        <button onclick="createNewClassNodeUI()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold px-2.5 py-1 text-xs rounded-lg shadow-xs transition" title="Add Class Node">+</button>
+    </div>
+</div>
             <div class="flex flex-wrap gap-1.5 text-xs">
                 <button onclick="switchTab('roster-tab')" class="px-3 py-2 rounded bg-indigo-800 font-medium hover:bg-indigo-900 transition">Group Roster</button>
                 <button onclick="switchTab('quiz-tab')" class="px-3 py-2 rounded bg-indigo-800 font-medium hover:bg-indigo-900 transition">Quiz Folder Bank</button>
@@ -294,7 +300,45 @@
             loadRosterCards();
             displayMasterLeaderboard();
         }
+function getSelectedClassName() {
+    return document.getElementById('global-class-selector').value;
+}
 
+function handleClassContextSelectionSwitch() {
+    loadRosterCards();
+    displayMasterLeaderboard();
+}
+
+// PASTE IT ONCE RIGHT HERE:
+function createNewClassNodeUI() {
+    const inputEl = document.getElementById('new-class-node-input');
+    const className = inputEl.value.trim();
+    
+    if (!className) {
+        alert("Please type a valid class name first.");
+        return;
+    }
+    
+    const selector = document.getElementById('global-class-selector');
+    
+    for (let i = 0; i < selector.options.length; i++) {
+        if (selector.options[i].value.toLowerCase() === className.toLowerCase()) {
+            alert("This class node already exists.");
+            return;
+        }
+    }
+    
+    const newOption = document.createElement('option');
+    newOption.value = className;
+    newOption.text = className;
+    selector.appendChild(newOption);
+    
+    selector.value = className;
+    inputEl.value = '';
+    handleClassContextSelectionSwitch();
+    
+    alert(`Successfully generated "${className}" workspace node!`);
+}
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(tabId).classList.remove('hidden');
