@@ -265,13 +265,21 @@
     </main>
 
     <script>
+        // Initialize Dexie Database
         const db = new Dexie("ArUcoClassroomDatabase");
-        // 🗄️ Upgrade schema version to structure compound mapping parameters cleanly
-        db.version(4).stores({
-            roster: "[className+markerId], className, markerId, name",
+        db.version(3).stores({
+            roster: "markerId, name",
             quizzes: "++id, title",
             questions: "++id, quizId, question, choiceA, choiceB, choiceC, choiceD, correctAnswer",
-            scores: "++id, [className+studentName], className, studentName, score"
+            scores: "studentName, score"
+        });
+
+        // Explicitly open database and catch version conflicts gracefully
+        db.open().catch(function (err) {
+            console.error("Failed to open IndexedDB database: ", err.stack || err);
+            if (confirm("Database version conflict detected. Would you like to reset the local storage database to fix this?")) {
+                db.delete().then(() => window.location.reload());
+            }
         });
 
         let activeQuizFolderId = null;
@@ -286,93 +294,6 @@
         let questionLoggedIdsSet = new Set();
         let questionAnswersBufferMap = {};
         let arucoEngineDetector = null;
-        
-        // 🔒 Global Security Filtering Session Scope Pool
-        let activeRosterAllowedIds = new Set();
-
-        // Helper to grab currently selected class dropdown value string
-        function getSelectedClassName() {
-            return document.getElementById('global-class-selector').value;
-        }
-
-        // Global handler executed whenever user switches target class context
-        function handleClassContextSelectionSwitch() {
-            loadRosterCards();
-            displayMasterLeaderboard();
-        }
-
-        // 🆕 Dynamic Class Node Generation Handler
-        function createNewClassNodeUI() {
-            const inputEl = document.getElementById('new-class-node-input');
-            const className = inputEl.value.trim();
-            
-            if (!className) {
-                alert("Please type a valid class name first.");
-                return;
-            }
-            
-            const selector = document.getElementById('global-class-selector');
-            
-            // Check if class already exists
-            for (let i = 0; i < selector.options.length; i++) {
-                if (selector.options[i].value.toLowerCase() === className.toLowerCase()) {
-                    alert("This class node already exists.");
-                    return;
-                }
-            }
-            
-            // Remove the placeholder option if it's the first time adding a class
-            if (selector.options.length > 0 && selector.options[0].value === "") {
-                selector.remove(0);
-            }
-            
-            const newOption = document.createElement('option');
-            newOption.value = className;
-            newOption.text = className;
-            selector.appendChild(newOption);
-            
-            selector.value = className;
-            inputEl.value = '';
-            handleClassContextSelectionSwitch();
-            
-            alert(`Successfully generated "${className}" workspace node!`);
-        }
-
-        // 🆕 Dynamic Class Node Remover Handler
-        async function deleteCurrentClassNodeUI() {
-            const selector = document.getElementById('global-class-selector');
-            const currentClass = selector.value;
-            
-            if (!currentClass || selector.options[selector.selectedIndex].disabled) {
-                alert("There is no active class to delete.");
-                return;
-            }
-            
-            const doubleCheck = confirm(`⚠️ DANGER: Are you absolutely sure you want to delete "${currentClass}"?\n\nThis will permanently clear its entire student roster and all accumulated leaderboard records!`);
-            if (!doubleCheck) return;
-            
-            // 1. Clear database entries tied to deleted node
-            await db.roster.where('className').equals(currentClass).delete();
-            await db.scores.where('className').equals(currentClass).delete();
-            
-            // 2. Clear element from selector
-            selector.remove(selector.selectedIndex);
-            
-            // 3. Fallback handle if no options remain
-            if (selector.options.length === 0) {
-                const placeholder = document.createElement('option');
-                placeholder.value = "";
-                placeholder.text = "-- Create a Class --";
-                placeholder.disabled = true;
-                placeholder.selected = true;
-                selector.appendChild(placeholder);
-            } else {
-                selector.selectedIndex = 0;
-            }
-            
-            handleClassContextSelectionSwitch();
-            alert(`Successfully deleted "${currentClass}" and all of its associated records.`);
-        }
 
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
@@ -391,14 +312,10 @@
         }
 
         function processRosterUpload() {
-            const currentClassName = getSelectedClassName();
-            if(!currentClassName) { alert("Please initialize or select a Class Node workspace first."); return; }
-            
             const input = document.getElementById('roster-file-input');
             if(!input.files.length) { alert("Please select a valid Roster file."); return; }
             const file = input.files[0];
             const reader = new FileReader();
-            
             reader.onload = function(e) {
                 try {
                     const data = new Uint8Array(e.target.result);
@@ -410,14 +327,11 @@
                             const idVal = extractObjectValueByNormalizedKey(row, 'id') || extractObjectValueByNormalizedKey(row, 'markerid');
                             const markerId = parseInt(idVal);
                             if(nameVal && !isNaN(markerId) && markerId >= 0 && markerId <= 999) {
-                                await db.roster.put({ 
-                                    className: currentClassName, 
-                                    markerId: markerId, 
-                                    name: nameVal.toString().trim() 
-                                });
+                                await db.roster.put({ markerId: markerId, name: nameVal.toString().trim() });
                             }
                         }
-                    }).then(() => { input.value = ''; loadRosterCards(); alert(`Roster successfully loaded under ${currentClassName}.`); });
+                    }).then(() => { input.value = ''; loadRosterCards(); alert("Roster loaded successfully."); })
+                    .catch(err => alert("Database write failed: " + err.message));
                 } catch(err) { alert("Error reading spreadsheet: " + err.message); }
             };
             reader.readAsArrayBuffer(file);
@@ -449,23 +363,25 @@
                                 });
                             }
                         }
-                    }).then(() => { input.value = ''; loadQuizDirectory(); alert("Questions imported successfully."); });
+                    }).then(() => { input.value = ''; loadQuizDirectory(); alert("Questions imported successfully."); })
+                    .catch(err => alert("Database transaction failed: " + err.message));
                 } catch(err) { alert("Parser file error: " + err.message); }
             };
             reader.readAsArrayBuffer(file);
         }
 
         async function saveManualStudent() {
-            const currentClassName = getSelectedClassName();
-            if(!currentClassName) { alert("Please initialize or select a Class Node workspace first."); return; }
-            
             const nameEl = document.getElementById('manual-student-name');
             const idEl = document.getElementById('manual-marker-id');
             const name = nameEl.value.trim(); const id = parseInt(idEl.value);
             if(!name || isNaN(id) || id < 0 || id > 999) { alert("Provide a valid name and ID scoped between 0 and 999."); return; }
-            
-            await db.roster.put({ className: currentClassName, markerId: id, name: name });
-            nameEl.value = ''; idEl.value = ''; loadRosterCards();
+            try {
+                await db.roster.put({ markerId: id, name: name });
+                nameEl.value = ''; idEl.value = ''; 
+                loadRosterCards();
+            } catch (err) {
+                alert("Could not save student profile: " + err.message);
+            }
         }
 
         async function saveManualQuestion() {
@@ -475,23 +391,28 @@
             const c = document.getElementById('mq-c').value.trim(); const d = document.getElementById('mq-d').value.trim();
             const correct = document.getElementById('mq-correct').value;
             if(!folderId || !questionText || !a || !b || !c || !d || !correct) { alert("Please complete all individual fields manually."); return; }
-            await db.questions.add({ quizId: folderId, question: questionText, choiceA: a, choiceB: b, choiceC: c, choiceD: d, correctAnswer: correct });
-            document.getElementById('mq-text').value = ''; document.getElementById('mq-a').value = ''; document.getElementById('mq-b').value = ''; document.getElementById('mq-c').value = ''; document.getElementById('mq-d').value = ''; document.getElementById('mq-correct').value = '';
-            loadQuizDirectory(); alert("Manual entry question stored successfully.");
+            try {
+                await db.questions.add({ quizId: folderId, question: questionText, choiceA: a, choiceB: b, choiceC: c, choiceD: d, correctAnswer: correct });
+                document.getElementById('mq-text').value = ''; document.getElementById('mq-a').value = ''; document.getElementById('mq-b').value = ''; document.getElementById('mq-c').value = ''; document.getElementById('mq-d').value = ''; document.getElementById('mq-correct').value = '';
+                loadQuizDirectory(); alert("Manual entry question stored successfully.");
+            } catch (err) {
+                alert("Could not save question node: " + err.message);
+            }
         }
 
         async function saveQuizFolder() {
             const el = document.getElementById('quiz-folder-title'); const title = el.value.trim(); if(!title) return;
-            await db.quizzes.add({ title: title }); el.value = ''; syncFolderDropdowns(); loadQuizDirectory();
+            try {
+                await db.quizzes.add({ title: title }); 
+                el.value = ''; 
+                syncFolderDropdowns(); 
+                loadQuizDirectory();
+            } catch (err) {
+                alert("Could not create folder: " + err.message);
+            }
         }
 
-        async function removeStudentProfile(markerId) { 
-            const currentClassName = getSelectedClassName();
-            if(confirm("Permanently wipe this student out of the active class structure?")) { 
-                await db.roster.delete([currentClassName, markerId]); 
-                loadRosterCards(); 
-            } 
-        }
+        async function removeStudentProfile(markerId) { if(confirm("Permanently wipe this entry out?")) { await db.roster.delete(markerId); loadRosterCards(); } }
         async function removeQuizFolder(quizId) {
             if(confirm("Completely wipe this folder track along with all internal questions nested inside?")) {
                 await db.quizzes.delete(quizId); await db.questions.where('quizId').equals(quizId).delete(); syncFolderDropdowns(); loadQuizDirectory();
@@ -499,34 +420,40 @@
         }
 
         async function syncFolderDropdowns() {
-            const dropdowns = document.querySelectorAll('.folder-dropdown-sync'); const folders = await db.quizzes.toArray();
-            dropdowns.forEach(drop => {
-                drop.innerHTML = '<option value="">-- Choose Quiz Destination --</option>';
-                folders.forEach(f => { drop.innerHTML += `<option value="${f.id}">${f.title}</option>`; });
-            });
+            try {
+                const dropdowns = document.querySelectorAll('.folder-dropdown-sync'); const folders = await db.quizzes.toArray();
+                dropdowns.forEach(drop => {
+                    drop.innerHTML = '<option value="">-- Choose Quiz Destination --</option>';
+                    folders.forEach(f => { drop.innerHTML += `<option value="${f.id}">${f.title}</option>`; });
+                });
+            } catch (e) { console.error(e); }
         }
 
         async function loadQuizDirectory() {
-            const container = document.getElementById('quiz-directory'); const list = await db.quizzes.toArray();
-            if(list.length === 0) { container.innerHTML = `<div class="text-xs text-gray-400 italic text-center p-4 border border-dashed rounded-lg">No active evaluation tracks.</div>`; return; }
-            container.innerHTML = '';
-            for(let q of list) {
-                const count = await db.questions.where('quizId').equals(q.id).count();
-                container.innerHTML += `
-                    <div class="p-3 bg-slate-50 border rounded-xl flex justify-between items-center shadow-sm text-xs fade-in-item">
-                        <div><h4 class="font-bold text-gray-800">📁 ${q.title}</h4><span class="text-gray-400 font-medium">${count} questions</span></div>
-                        <div class="flex gap-1">
-                            ${count > 0 ? `<button onclick="launchQuizEvaluationRunner(${q.id}, '${q.title}')" class="bg-indigo-600 text-white font-bold px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition shadow-sm">Launch Quiz 🚀</button>` : `<span class="bg-gray-200 text-gray-400 px-2 py-1.5 rounded-lg font-medium">Empty</span>`}
-                            <button onclick="removeQuizFolder(${q.id})" class="text-red-600 hover:bg-red-50 border border-red-200 px-2 py-1.5 rounded-lg font-medium transition">Delete</button>
-                        </div>
-                    </div>`;
-            }
+            try {
+                const container = document.getElementById('quiz-directory'); const list = await db.quizzes.toArray();
+                if(list.length === 0) { container.innerHTML = `<div class="text-xs text-gray-400 italic text-center p-4 border border-dashed rounded-lg">No active evaluation tracks.</div>`; return; }
+                container.innerHTML = '';
+                for(let q of list) {
+                    const count = await db.questions.where('quizId').equals(q.id).count();
+                    container.innerHTML += `
+                        <div class="p-3 bg-slate-50 border rounded-xl flex justify-between items-center shadow-sm text-xs fade-in-item">
+                            <div><h4 class="font-bold text-gray-800">📁 ${q.title}</h4><span class="text-gray-400 font-medium">${count} questions</span></div>
+                            <div class="flex gap-1">
+                                ${count > 0 ? `<button onclick="launchQuizEvaluationRunner(${q.id}, '${q.title}')" class="bg-indigo-600 text-white font-bold px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition shadow-sm">Launch Quiz 🚀</button>` : `<span class="bg-gray-200 text-gray-400 px-2 py-1.5 rounded-lg font-medium">Empty</span>`}
+                                <button onclick="removeQuizFolder(${q.id})" class="text-red-600 hover:bg-red-50 border border-red-200 px-2 py-1.5 rounded-lg font-medium transition">Delete</button>
+                            </div>
+                        </div>`;
+                }
+            } catch (e) { console.error(e); }
         }
 
         function buildArUcoSVGStringMarkup(id) {
             if (typeof AR !== 'undefined') {
-                const dictionary = new AR.Dictionary("ARUCO");
-                return dictionary.generateSVG(id);
+                try {
+                    const dictionary = new AR.Dictionary("ARUCO");
+                    return dictionary.generateSVG(id);
+                } catch (e) { console.error(e); }
             }
             return `<div class="text-[10px] text-red-500">Error loading library layout engine</div>`;
         }
@@ -540,24 +467,19 @@
                     img.onload = () => resolve(img);
                     img.onerror = (e) => reject(e);
                     img.src = encodedSvgData;
-                } catch (err) {
-                    reject(err);
-                }
+                } catch (err) { reject(err); }
             });
         }
 
         function drawCardToCanvasContext(ctx, markerImageElement, studentName, id) {
             ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, 800, 1000);
             ctx.lineWidth = 16; ctx.strokeStyle = "#000000"; ctx.strokeRect(0, 0, 800, 1000);
-            
             ctx.fillStyle = "#000000"; ctx.font = "900 90px sans-serif"; ctx.textBaseline = "middle"; ctx.textAlign = "center";
             ctx.fillText("A", 400, 65);
             ctx.save(); ctx.translate(735, 500); ctx.rotate(Math.PI / 2); ctx.fillText("B", 0, 0); ctx.restore();
             ctx.save(); ctx.translate(400, 935); ctx.rotate(Math.PI); ctx.fillText("C", 0, 0); ctx.restore();
             ctx.save(); ctx.translate(65, 500); ctx.rotate(-Math.PI / 2); ctx.fillText("D", 0, 0); ctx.restore();
-            
             ctx.drawImage(markerImageElement, 130, 150, 540, 540);
-            
             ctx.fillStyle = "#000000"; ctx.font = "bold 44px sans-serif"; ctx.fillText(studentName.toUpperCase(), 400, 780);
             ctx.fillStyle = "#6b7280"; ctx.font = "bold 22px monospace"; ctx.fillText(`ARUCO IDENTIFICATION KEY: ${id}`, 400, 835);
         }
@@ -565,99 +487,67 @@
         async function renderAndDownloadCardImage(id, studentName) {
             const svgElement = document.querySelector(`#marker-node-box-${id} svg`);
             if(!svgElement) { alert("Marker asset element structure missing from viewport."); return; }
-            
             try {
                 const img = await convertSvgToImagePromise(svgElement);
-                const canvas = document.createElement('canvas');
-                canvas.width = 800; canvas.height = 1000;
+                const canvas = document.createElement('canvas'); canvas.width = 800; canvas.height = 1000;
                 const ctx = canvas.getContext('2d');
-                
                 drawCardToCanvasContext(ctx, img, studentName, id);
-                
                 const downloadLink = document.createElement('a');
                 downloadLink.download = `${studentName.replace(/[^a-z0-9]/gi, '_')}_ID_${id}.png`;
                 downloadLink.href = canvas.toDataURL("image/png");
                 document.body.appendChild(downloadLink); downloadLink.click(); document.body.removeChild(downloadLink);
-            } catch (err) {
-                alert("Failed to extract marker image asset: " + err.message);
-            }
+            } catch (err) { alert("Failed to extract marker image asset: " + err.message); }
         }
 
         async function downloadAllCardsAsZip() {
-            const currentClassName = getSelectedClassName();
-            if(!currentClassName) { alert("Please select an active Class Node first."); return; }
-            
-            const list = await db.roster.where('className').equals(currentClassName).toArray();
-            if(list.length === 0) { alert(`Your Roster for ${currentClassName} is completely empty.`); return; }
-            
+            const list = await db.roster.toArray();
+            if(list.length === 0) { alert("Your Student Roster is completely empty."); return; }
             const zip = new JSZip();
-            
             for(let s of list) {
                 const svgElement = document.querySelector(`#marker-node-box-${s.markerId} svg`);
                 if(!svgElement) continue; 
-                
                 try {
                     const img = await convertSvgToImagePromise(svgElement);
-                    const canvas = document.createElement('canvas');
-                    canvas.width = 800; canvas.height = 1000;
+                    const canvas = document.createElement('canvas'); canvas.width = 800; canvas.height = 1000;
                     const ctx = canvas.getContext('2d');
-                    
                     drawCardToCanvasContext(ctx, img, s.name, s.markerId);
-                    
                     const base64Data = canvas.toDataURL("image/png").split(',')[1];
                     const sanitizedFileName = `${s.name.replace(/[^a-z0-9]/gi, '_')}_ID_${s.markerId}.png`;
                     zip.file(sanitizedFileName, base64Data, {base64: true});
-                } catch (e) {
-                    console.error(`Skipping element build sequence ID: ${s.markerId}`, e);
-                }
+                } catch (e) { console.error(`Skipping element build sequence ID: ${s.markerId}`, e); }
             }
-            
             zip.generateAsync({type:"blob"}).then(function(content) {
                 const downloadLink = document.createElement('a');
-                downloadLink.download = `ArUco_Quiz_Cards_${currentClassName.replace(/\s+/g, '_')}.zip`;
+                downloadLink.download = "Classroom_ArUco_Quiz_Cards.zip";
                 downloadLink.href = URL.createObjectURL(content);
                 document.body.appendChild(downloadLink); downloadLink.click(); document.body.removeChild(downloadLink);
             });
         }
 
         async function loadRosterCards() {
-            const container = document.getElementById('print-area'); 
-            const currentClassName = getSelectedClassName();
-            
-            if(!currentClassName) {
-                container.innerHTML = `<div class="col-span-full text-center text-xs p-8 text-gray-400 border border-dashed rounded-xl">No active workspace loaded. Initialize a class node in the navbar above to get started.</div>`;
-                return;
-            }
-            
-            const list = await db.roster.where('className').equals(currentClassName).toArray();
-            
-            if(list.length === 0) { 
-                container.innerHTML = `<div class="col-span-full text-center text-xs p-8 text-gray-400 border border-dashed rounded-xl">No active profiles discovered in ${currentClassName}. Seed students or import a roster file.</div>`; 
-                return; 
-            }
-            container.innerHTML = list.map(s => `
-                <div class="print-card bg-white border-[6px] border-black rounded-2xl shadow-sm flex flex-col items-center justify-between w-full h-[460px] max-w-md mx-auto relative group p-6 fade-in-item">
-                    <div class="absolute top-1.5 font-black text-3xl text-black">A</div>
-                    <div class="absolute right-3.5 top-1/2 -translate-y-1/2 font-black text-3xl text-black rotate-90">B</div>
-                    <div class="absolute bottom-1.5 font-black text-3xl text-black rotate-180">C</div>
-                    <div class="absolute left-3.5 top-1/2 -translate-y-1/2 font-black text-3xl text-black -rotate-90">D</div>
-                    
-                    <div class="absolute top-3 right-3 flex gap-1 no-print">
-                        <button onclick="renderAndDownloadCardImage(${s.markerId}, '${s.name}')" class="bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded text-[10px] hover:bg-indigo-100">📥 Save PNG</button>
-                        <button onclick="removeStudentProfile(${s.markerId})" class="bg-red-50 text-red-600 font-bold px-1.5 py-0.5 rounded text-[10px] hover:bg-red-100">✕</button>
-                    </div>
-                    
-                    <div id="marker-node-box-${s.markerId}" class="w-64 h-64 p-0.5 flex items-center justify-center my-auto mt-7 transform scale-110">${buildArUcoSVGStringMarkup(s.markerId)}</div>
-                    
-                    <div class="w-full text-center border-t border-gray-100 pt-2 mt-auto">
-                        <h5 class="font-black text-sm text-gray-900 truncate px-4">${s.name.toUpperCase()}</h5>
-                        <span class="text-[10px] font-mono text-gray-400 font-bold">${currentClassName.toUpperCase()} • ID: ${s.markerId}</span>
-                    </div>
-                </div>`).join('');
+            try {
+                const container = document.getElementById('print-area'); const list = await db.roster.toArray();
+                if(list.length === 0) { container.innerHTML = `<div class="col-span-full text-center text-xs p-8 text-gray-400 border border-dashed rounded-xl">No active roster students discovered.</div>`; return; }
+                container.innerHTML = list.map(s => `
+                    <div class="print-card bg-white border-[6px] border-black rounded-2xl shadow-sm flex flex-col items-center justify-between w-full h-[460px] max-w-md mx-auto relative group p-6 fade-in-item">
+                        <div class="absolute top-1.5 font-black text-3xl text-black">A</div>
+                        <div class="absolute right-3.5 top-1/2 -translate-y-1/2 font-black text-3xl text-black rotate-90">B</div>
+                        <div class="absolute bottom-1.5 font-black text-3xl text-black rotate-180">C</div>
+                        <div class="absolute left-3.5 top-1/2 -translate-y-1/2 font-black text-3xl text-black -rotate-90">D</div>
+                        <div class="absolute top-3 right-3 flex gap-1 no-print">
+                            <button onclick="renderAndDownloadCardImage(${s.markerId}, '${s.name}')" class="bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded text-[10px] hover:bg-indigo-100">📥 Save PNG</button>
+                            <button onclick="removeStudentProfile(${s.markerId})" class="bg-red-50 text-red-600 font-bold px-1.5 py-0.5 rounded text-[10px] hover:bg-red-100">✕</button>
+                        </div>
+                        <div id="marker-node-box-${s.markerId}" class="w-64 h-64 p-0.5 flex items-center justify-center my-auto mt-7 transform scale-110">${buildArUcoSVGStringMarkup(s.markerId)}</div>
+                        <div class="w-full text-center border-t border-gray-100 pt-2 mt-auto">
+                            <h5 class="font-black text-sm text-gray-900 truncate px-4">${s.name.toUpperCase()}</h5>
+                            <span class="text-[10px] font-mono text-gray-400 font-bold">NODE ID: ${s.markerId}</span>
+                        </div>
+                    </div>`).join('');
+            } catch (e) { console.error(e); }
         }
 
         async function launchQuizEvaluationRunner(quizId, quizTitle) {
-            if(!getSelectedClassName()) { alert("Please pick an active Class Node before launching evaluation frames."); return; }
             activeQuizFolderId = quizId;
             activeQuestionsArray = await db.questions.where('quizId').equals(quizId).toArray();
             questionCursorIndex = 0;
@@ -688,7 +578,6 @@
 
             const currentQ = activeQuestionsArray[questionCursorIndex];
             document.getElementById('p1-title-card').innerText = `QUESTION ${questionCursorIndex + 1} OF ${activeQuestionsArray.length}`;
-            document.getElementById('p1-class-tag').innerText = `SESSION: ${getSelectedClassName().toUpperCase()}`;
             document.getElementById('p1-question-text').innerText = currentQ.question;
             document.getElementById('p1-a').innerText = `A: ${currentQ.choiceA}`;
             document.getElementById('p1-b').innerText = `B: ${currentQ.choiceB}`;
@@ -700,20 +589,9 @@
             document.getElementById('arena-phase-1').classList.add('hidden');
             document.getElementById('arena-phase-2').classList.remove('hidden');
             document.getElementById('arena-phase-3').classList.add('hidden');
-            
-            activeRosterAllowedIds.clear();
-            const currentSelectedClassName = getSelectedClassName();
-            document.getElementById('p2-live-class-banner').innerText = `📡 LIVE SCAN ENGINE • TARGETING: ${currentSelectedClassName.toUpperCase()}`;
-            
-            db.roster.where('className').equals(currentSelectedClassName).toArray().then(rosterList => {
-                rosterList.forEach(student => {
-                    activeRosterAllowedIds.add(parseInt(student.markerId));
-                });
-                armScannerEngineChannel(true);
-            });
+            armScannerEngineChannel(true);
         }
 
-        // Channels system arm boolean safely
         function armScannerEngineChannel(armBoolean) {
             isScannerArmed = armBoolean;
             if(!isScannerArmed && isTryScanRunning) toggleTryScanEngine();
@@ -725,58 +603,28 @@
             document.getElementById('arena-phase-2').classList.add('hidden');
             document.getElementById('arena-phase-3').classList.remove('hidden');
 
-            const currentQ = activeQuestionsArray[questionCursorIndex];
-            const currentSelectedClass = getSelectedClassName();
-            
-            let tallies = { A: 0, B: 0, C: 0, D: 0 };
-            
-            await db.transaction('rw', db.scores, db.roster, async () => {
-                for(let id in questionAnswersBufferMap) {
-                    let letter = questionAnswersBufferMap[id];
-                    if(tallies[letter] !== undefined) tallies[letter]++;
-                    
-                    if(letter === currentQ.correctAnswer) {
-                        const profile = await db.roster.get([currentSelectedClass, parseInt(id)]);
-                        if(profile) {
-                            let scoreObj = await db.scores.where({ className: currentSelectedClass, studentName: profile.name }).first();
-                            if(!scoreObj) {
-                                scoreObj = { className: currentSelectedClass, studentName: profile.name, score: 0, scannedQuestionsTrack: [] };
-                            }
-                            
-                            if(!scoreObj.scannedQuestionsTrack) {
-                                scoreObj.scannedQuestionsTrack = [];
-                            }
-                            
-                            const uniqueQuestionFingerprint = `quiz_${activeQuizFolderId}_q_${questionCursorIndex}`;
-                            
-                            if(!scoreObj.scannedQuestionsTrack.includes(uniqueQuestionFingerprint)) {
-                                scoreObj.score += 1;
-                                scoreObj.scannedQuestionsTrack.push(uniqueQuestionFingerprint);
-                                await db.scores.put(scoreObj);
-                            }
-                        }
-                    }
-                }
-            });
-
-            const total = questionLoggedIdsSet.size;
-            
-            if(total === 0) {
-                document.getElementById('p3-analytics-bars-box').innerHTML = `
-                    <div class="mb-6 p-4 bg-slate-900/60 rounded-xl border border-slate-800 text-left space-y-2">
-                        <p class="text-xs font-bold text-indigo-400 tracking-wider uppercase">Question Context:</p>
-                        <p class="text-base font-medium text-slate-100 mb-3">${currentQ.question}</p>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-300">
-                            <div class="p-1.5 rounded ${currentQ.correctAnswer === 'A' ? 'text-green-400 font-bold bg-green-950/20 border border-green-900/40' : ''}">A: ${currentQ.choiceA}</div>
-                            <div class="p-1.5 rounded ${currentQ.correctAnswer === 'B' ? 'text-green-400 font-bold bg-green-950/20 border border-green-900/40' : ''}">B: ${currentQ.choiceB}</div>
-                            <div class="p-1.5 rounded ${currentQ.correctAnswer === 'C' ? 'text-green-400 font-bold bg-green-950/20 border border-green-900/40' : ''}">C: ${currentQ.choiceC}</div>
-                            <div class="p-1.5 rounded ${currentQ.correctAnswer === 'D' ? 'text-green-400 font-bold bg-green-950/20 border border-green-900/40' : ''}">D: ${currentQ.choiceD}</div>
-                        </div>
-                    </div>
-                    <div class="text-slate-400 text-center italic text-sm py-8">Zero entries recorded during this scanning segment.</div>`;
+            if(questionLoggedIdsSet.size === 0) {
+                document.getElementById('p3-analytics-bars-box').innerHTML = '<div class="text-slate-400 text-center italic text-sm py-8">Zero responses recorded.</div>';
                 return;
             }
 
+            const currentQ = activeQuestionsArray[questionCursorIndex];
+            document.getElementById('p3-question-title-fallback').innerText = currentQ.question;
+            
+            let tallies = { A: 0, B: 0, C: 0, D: 0 };
+            for(let id in questionAnswersBufferMap) {
+                let letter = questionAnswersBufferMap[id];
+                if(tallies[letter] !== undefined) tallies[letter]++;
+                if(letter === currentQ.correctAnswer) {
+                    const profile = await db.roster.get(parseInt(id));
+                    if(profile) {
+                        let scoreObj = await db.scores.get(profile.name) || { studentName: profile.name, score: 0 };
+                        scoreObj.score += 1; await db.scores.put(scoreObj);
+                    }
+                }
+            }
+
+            const total = questionLoggedIdsSet.size;
             document.getElementById('p3-analytics-bars-box').innerHTML = `
                 <div class="mb-6 p-4 bg-slate-900/60 rounded-xl border border-slate-800 text-left space-y-2">
                     <p class="text-xs font-bold text-indigo-400 tracking-wider uppercase">Question Context:</p>
@@ -791,9 +639,8 @@
                     const percent = Math.round((tallies[letter] / total) * 100) || 0;
                     const isCorrect = letter === currentQ.correctAnswer;
                     const choiceText = currentQ[`choice${letter}`] || ''; 
-                    
                     return `
-                        <div class="text-xs font-semibold mb-3 text-left">
+                        <div class="text-xs font-semibold mb-3">
                             <div class="flex justify-between text-slate-300 mb-1">
                                 <span class="${isCorrect ? 'text-green-400 font-black' : ''}">
                                     Choice ${letter}: <span class="font-normal italic text-slate-400">${choiceText}</span> ${isCorrect ? '✓' : ''}
@@ -820,42 +667,24 @@
 
         function parsePixelMatrixBufferTelemetry(ctxFrame, w, h) {
             if(!isScannerArmed || isTryScanRunning) return;
-            
             if (!arucoEngineDetector) {
-                if (typeof AR !== 'undefined') {
-                    arucoEngineDetector = new AR.Detector({ dictionaryName: 'ARUCO' });
-                } else {
-                    return; 
-                }
+                if (typeof AR !== 'undefined') { arucoEngineDetector = new AR.Detector({ dictionaryName: 'ARUCO' }); } 
+                else { return; }
             }
-
             const imgData = ctxFrame.getImageData(0, 0, w, h);
             const detectedMarkers = arucoEngineDetector.detect(imgData);
-            const currentSelectedClass = getSelectedClassName();
-
             for (let i = 0; i < detectedMarkers.length; i++) {
-                const marker = detectedMarkers[i];
-                const markerId = marker.id;
-                const corners = marker.corners; 
-
-                if(!activeRosterAllowedIds.has(markerId)) {
-                    continue; 
-                }
-
-                db.roster.get([currentSelectedClass, markerId]).then(profile => {
+                const marker = detectedMarkers[i]; const markerId = marker.id; const corners = marker.corners; 
+                db.roster.get(markerId).then(profile => {
                     if (profile && !questionLoggedIdsSet.has(markerId)) {
                         const topEdgeY    = (corners[0].y + corners[1].y) / 2;
                         const rightEdgeY  = (corners[1].y + corners[2].y) / 2;
                         const bottomEdgeY = (corners[2].y + corners[3].y) / 2;
                         const leftEdgeY   = (corners[3].y + corners[0].y) / 2;
-
-                        let mappedAnswer = "A";
-                        let lowestObservedPixelY = topEdgeY;
-
+                        let mappedAnswer = "A"; let lowestObservedPixelY = topEdgeY;
                         if (rightEdgeY < lowestObservedPixelY) { mappedAnswer = "B"; lowestObservedPixelY = rightEdgeY; }
                         if (bottomEdgeY < lowestObservedPixelY) { mappedAnswer = "C"; lowestObservedPixelY = bottomEdgeY; }
                         if (leftEdgeY < lowestObservedPixelY) { mappedAnswer = "D"; lowestObservedPixelY = leftEdgeY; }
-
                         registerScannedAnswerTelemetryPacket(markerId, mappedAnswer);
                     }
                 });
@@ -865,25 +694,16 @@
         async function registerScannedAnswerTelemetryPacket(markerId, orientationLetterCode) {
             if(!isScannerArmed) return;
             if(questionLoggedIdsSet.has(markerId)) return;
-            
-            const currentClass = getSelectedClassName();
-            if(!currentClass) return;
-
-            const profile = await db.roster.get([currentClass, markerId]); 
-            if(!profile) return;
-
+            const profile = await db.roster.get(markerId); if(!profile) return;
             questionLoggedIdsSet.add(markerId);
             questionAnswersBufferMap[markerId] = orientationLetterCode;
-
             const log = document.getElementById('p2-log-stream');
             if(log.innerText.includes("No active data")) log.innerHTML = '';
-
             log.innerHTML = `
                 <div class="bg-slate-900 p-2 border border-slate-800 rounded-lg flex justify-between items-center font-semibold text-slate-200 fade-in-item">
                     <span>✓ ${profile.name}</span>
                     <span class="bg-indigo-950 text-indigo-400 font-mono font-bold px-1.5 py-0.5 rounded text-[10px]">Rotated: ${orientationLetterCode}</span>
                 </div>` + log.innerHTML;
-
             document.getElementById('p2-live-counter').innerText = `${questionLoggedIdsSet.size} Responses Ingested`;
         }
 
@@ -893,10 +713,8 @@
                 isTryScanRunning = false; clearInterval(tryScanTimerInterval);
                 btn.innerText = "🔬 TRY SCAN (SIMULATOR)"; btn.className = "bg-cyan-600/90 text-white px-3 py-1.5 text-xs font-bold rounded-full hover:bg-cyan-500";
             } else {
-                const currentClass = getSelectedClassName();
-                if(!currentClass) { alert("Please pick or setup a Class Node workspace first."); return; }
-                const rosterList = await db.roster.where('className').equals(currentClass).toArray();
-                if(rosterList.length === 0) { alert(`Please seed student profiles under ${currentClass} first.`); return; }
+                const rosterList = await db.roster.toArray();
+                if(rosterList.length === 0) { alert("Please seed student profiles first."); return; }
                 isTryScanRunning = true; btn.innerText = "🛑 STOP SIMULATOR"; btn.className = "bg-red-500 text-white px-3 py-1.5 text-xs font-bold rounded-full animate-pulse";
                 tryScanTimerInterval = setInterval(() => {
                     const remaining = rosterList.filter(s => !questionLoggedIdsSet.has(s.markerId));
@@ -911,22 +729,9 @@
         function toggleCameraMirrorFlip() { isCameraCanvasMirrored = !isCameraCanvasMirrored; }
 
         async function displayMasterLeaderboard() {
-            const container = document.getElementById('master-leaderboard-view'); 
-            const activeClassName = getSelectedClassName();
-            
-            if(!activeClassName) {
-                container.innerHTML = `<div class="text-xs text-gray-400 italic text-center p-8 bg-slate-50 border border-dashed rounded-xl">Initialize an active Class Node from the workspace layout navbar tool above.</div>`;
-                return;
-            }
-            
-            document.getElementById('leaderboard-class-title').innerText = `Active Context Scope Room: ${activeClassName}`;
-            const scoresList = await db.scores.where('className').equals(activeClassName).toArray();
+            const container = document.getElementById('master-leaderboard-view'); const scoresList = await db.scores.toArray();
             const ranked = scoresList.sort((x, y) => y.score - x.score);
-            
-            if(ranked.length === 0) { 
-                container.innerHTML = `<div class="text-xs text-gray-400 italic text-center p-8 bg-slate-50 border border-dashed rounded-xl">No leaderboard entries found inside ${activeClassName}.</div>`; 
-                return; 
-            }
+            if(ranked.length === 0) { container.innerHTML = `<div class="text-xs text-gray-400 italic text-center p-8 bg-slate-50 border border-dashed rounded-xl">No leaderboard data found yet.</div>`; return; }
             container.innerHTML = ranked.map((record, index) => `
                 <div class="p-3 bg-white border border-slate-200 rounded-xl flex justify-between items-center text-xs shadow-xs max-w-sm mx-auto font-medium mb-1.5 fade-in-item">
                     <div class="flex items-center gap-2"><span class="font-extrabold text-slate-400 text-sm">#${index + 1}</span><span class="text-slate-800 font-bold text-sm">${record.studentName}</span></div>
@@ -934,14 +739,7 @@
                 </div>`).join('');
         }
 
-        async function purgeLeaderboardMetrics() { 
-            const targetClass = getSelectedClassName();
-            if(!targetClass) return;
-            if(confirm(`Wipe all leaderboard standings out permanently for ${targetClass}?`)) { 
-                await db.scores.where('className').equals(targetClass).delete(); 
-                displayMasterLeaderboard(); 
-            } 
-        }
+        async function purgeLeaderboardMetrics() { if(confirm("Clear standings?")) { await db.scores.clear(); displayMasterLeaderboard(); } }
 
         async function initializeCameraHardwareDecoderStream() {
             const video = document.getElementById('webcam-hardware-stream');
@@ -952,17 +750,10 @@
                 function frameRenderProcessingLoop() {
                     if (video.readyState === video.HAVE_ENOUGH_DATA) {
                         if(viewCanvas.width !== video.videoWidth) { viewCanvas.width = video.videoWidth; viewCanvas.height = video.videoHeight; }
-                        
                         ctx.drawImage(video, 0, 0, viewCanvas.width, viewCanvas.height);
                         parsePixelMatrixBufferTelemetry(ctx, viewCanvas.width, viewCanvas.height);
-                        
                         if(isCameraCanvasMirrored) { 
-                            ctx.save();
-                            ctx.clearRect(0, 0, viewCanvas.width, viewCanvas.height);
-                            ctx.translate(viewCanvas.width, 0); 
-                            ctx.scale(-1, 1); 
-                            ctx.drawImage(video, 0, 0, viewCanvas.width, viewCanvas.height); 
-                            ctx.restore();
+                            ctx.save(); ctx.clearRect(0, 0, viewCanvas.width, viewCanvas.height); ctx.translate(viewCanvas.width, 0); ctx.scale(-1, 1); ctx.drawImage(video, 0, 0, viewCanvas.width, viewCanvas.height); ctx.restore();
                         }
                     }
                     requestAnimationFrame(frameRenderProcessingLoop);
@@ -971,7 +762,11 @@
             } catch (err) { console.warn("Camera load warning: " + err); }
         }
 
-        window.addEventListener('DOMContentLoaded', () => { syncFolderDropdowns(); loadQuizDirectory(); loadRosterCards(); });
+        // 🚀 SAFE INSTANT INITIALIZATION SETUP
+        // Runs immediately since script is at bottom of DOM; avoids late DOMContentLoaded event miss
+        syncFolderDropdowns(); 
+        loadQuizDirectory(); 
+        loadRosterCards();
     </script>
 </body>
 </html>
