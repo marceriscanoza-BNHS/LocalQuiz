@@ -67,6 +67,7 @@
             <div class="flex flex-wrap gap-1.5 text-xs">
                 <button onclick="switchTab('roster-tab')" class="px-3 py-2 rounded bg-indigo-800 font-medium hover:bg-indigo-900 transition">Group Roster</button>
                 <button onclick="switchTab('quiz-tab')" class="px-3 py-2 rounded bg-indigo-800 font-medium hover:bg-indigo-900 transition">Quiz Folder Bank</button>
+                <button onclick="switchTab('attendance-tab')" class="px-3 py-2 rounded bg-emerald-600 text-white font-bold hover:bg-emerald-700 transition">📅 Attendance Tracker</button>
                 <button onclick="switchTab('summary-tab')" class="px-3 py-2 rounded bg-purple-600 text-white font-bold hover:bg-purple-700 transition">🏆 Leaderboard</button>
             </div>
         </div>
@@ -174,6 +175,28 @@
             <div id="quiz-directory" class="space-y-2"></div>
         </section>
 
+        <section id="attendance-tab" class="tab-content hidden bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-3 mb-4 gap-3">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800">📅 Attendance Log Board</h2>
+                    <p class="text-xs text-gray-400 font-medium">Track daily attendance scans segmented dynamically by calendar months.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <select id="attendance-month-filter" onchange="displayAttendanceMatrix()" class="border p-2 text-xs rounded-lg bg-white font-bold text-gray-700"></select>
+                    <button onclick="downloadAttendanceSpreadsheet()" class="bg-emerald-600 text-white px-3 py-2 text-xs font-bold rounded-lg shadow hover:bg-emerald-700 transition">📥 Download Month Report</button>
+                    <button onclick="launchAttendanceScannerSession()" class="bg-indigo-600 text-white px-4 py-2 text-xs font-bold rounded-lg shadow hover:bg-indigo-700 transition">📡 Start Attendance Scan</button>
+                </div>
+            </div>
+            <div class="overflow-x-auto border border-gray-100 rounded-xl">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr id="attendance-table-header" class="bg-slate-100 text-slate-700 font-bold border-b border-gray-200"></tr>
+                    </thead>
+                    <tbody id="attendance-table-body" class="divide-y divide-gray-100 text-gray-700"></tbody>
+                </table>
+            </div>
+        </section>
+
         <section id="play-tab" class="tab-content hidden fixed inset-0 bg-slate-900 text-white z-50 overflow-hidden flex flex-col">
             
             <div id="arena-phase-1" class="flex-1 flex flex-col p-6 justify-between max-w-4xl mx-auto w-full">
@@ -223,7 +246,7 @@
                     </div>
 
                     <div class="p-4 border-t border-slate-800 bg-slate-900/40">
-                        <button onclick="transitionToPhase3()" class="w-full bg-indigo-600 text-white py-3 rounded-xl text-sm font-bold shadow hover:bg-indigo-500 active:scale-98 transition">⏹ FINISH SCANNING</button>
+                        <button id="finish-scanning-action-btn" onclick="transitionToPhase3()" class="w-full bg-indigo-600 text-white py-3 rounded-xl text-sm font-bold shadow hover:bg-indigo-500 active:scale-98 transition">⏹ FINISH SCANNING</button>
                     </div>
                 </div>
             </div>
@@ -241,6 +264,20 @@
 
                 <div class="border-t border-slate-800 pt-4 pb-2 flex gap-3 justify-center">
                     <button onclick="stepToNextQuestion()" class="bg-indigo-600 text-white text-base font-bold px-12 py-3.5 rounded-xl shadow-lg hover:bg-indigo-500 transition">Next Question ➡️</button>
+                </div>
+            </div>
+
+            <div id="arena-attendance-review" class="hidden flex-1 flex flex-col p-6 justify-between max-w-4xl mx-auto w-full">
+                <div class="text-xs tracking-widest text-emerald-400 font-bold font-mono border-b border-slate-800 pb-3 flex justify-between items-center">
+                    <span>📋 ATTENDANCE RUN VERIFICATION AUDIT</span>
+                    <span id="attendance-audit-date-badge" class="bg-slate-800 text-slate-300 px-2 py-0.5 rounded">DATE: --</span>
+                </div>
+                <div class="flex-1 my-4 overflow-y-auto max-w-xl mx-auto w-full pr-1">
+                    <p class="text-xs text-slate-400 mb-3 leading-relaxed">Double-check the computed scan telemetry below. Tap any user entry to manually toggle their active presence profile value if required.</p>
+                    <div id="attendance-review-list-box" class="space-y-1.5"></div>
+                </div>
+                <div class="border-t border-slate-800 pt-4 pb-2 flex justify-center">
+                    <button onclick="commitAttendanceVerificationSession()" class="bg-emerald-500 text-slate-950 text-base font-black px-12 py-3.5 rounded-xl shadow-md hover:bg-emerald-400 transition">💾 COMMIT & SAVE ENTRIES</button>
                 </div>
             </div>
 
@@ -262,12 +299,13 @@
     <script>
         // Database Schema with explicit Class Node table segments
         const db = new Dexie("ArUcoClassroomDatabase");
-        db.version(4).stores({
+        db.version(5).stores({
             classes: "++id, title",
             roster: "++id, classId, markerId, name",
             quizzes: "++id, title",
             questions: "++id, quizId, question, choiceA, choiceB, choiceC, choiceD, correctAnswer",
-            scores: "++id, classId, studentName, score"
+            scores: "++id, classId, studentName, score",
+            attendance: "++id, classId, studentName, dateString, monthString, isPresent"
         });
 
         // Open connection explicitly
@@ -292,6 +330,10 @@
         let questionAnswersBufferMap = {};
         let arucoEngineDetector = null;
 
+        // Attendance engine context session tracks
+        let appOperationMode = "QUIZ"; // "QUIZ" or "ATTENDANCE"
+        let currentSessionAttendanceMap = {}; // markerId -> true/false
+
         // Routing engine tabs
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
@@ -299,6 +341,7 @@
             if(tabId === 'quiz-tab') { syncFolderDropdowns(); loadQuizDirectory(); }
             if(tabId === 'roster-tab') { syncClassDropdownInterface(); loadRosterCards(); }
             if(tabId === 'summary-tab') { displayMasterLeaderboard(); }
+            if(tabId === 'attendance-tab') { syncAttendanceMonthFilterOptions(); }
         }
 
         // ==========================================
@@ -524,6 +567,192 @@
         }
 
         // ==========================================
+        // 📅 ATTENDANCE MODE ENGINE LOGIC
+        // ==========================================
+        async function syncAttendanceMonthFilterOptions() {
+            if (!activeClassNodeId) await syncClassDropdownInterface();
+            const filterSelect = document.getElementById('attendance-month-filter');
+            const items = await db.attendance.where('classId').equals(activeClassNodeId).toArray();
+            
+            const monthSet = new Set();
+            items.forEach(i => monthSet.add(i.monthString));
+            
+            // Generate standard placeholder for current active tracking date if database records are dry
+            const currentObj = new Date();
+            const currentMonthStr = currentObj.toLocaleString('default', { month: 'long', year: 'numeric' });
+            monthSet.add(currentMonthStr);
+            
+            const sortedMonths = Array.from(monthSet);
+            filterSelect.innerHTML = sortedMonths.map(m => `<option value="${m}" ${m === currentMonthStr ? 'selected' : ''}>${m}</option>`).join('');
+            displayAttendanceMatrix();
+        }
+
+        async function displayAttendanceMatrix() {
+            const targetMonth = document.getElementById('attendance-month-filter').value;
+            const headerRow = document.getElementById('attendance-table-header');
+            const bodyContainer = document.getElementById('attendance-table-body');
+            
+            if (!activeClassNodeId || !targetMonth) return;
+            
+            const students = await db.roster.where('classId').equals(activeClassNodeId).toArray();
+            const records = await db.attendance.where({ classId: activeClassNodeId, monthString: targetMonth }).toArray();
+            
+            const uniqueDatesSet = new Set();
+            records.forEach(r => uniqueDatesSet.add(r.dateString));
+            const sortedDates = Array.from(uniqueDatesSet).sort((a,b) => new Date(a) - new Date(b));
+            
+            headerRow.innerHTML = `<th class="p-3">Student Profile Name</th>` + sortedDates.map(d => `<th class="p-3 text-center whitespace-nowrap">${d}</th>`).join('');
+            
+            if (students.length === 0) {
+                bodyContainer.innerHTML = `<tr><td colspan="${sortedDates.length + 1}" class="p-4 text-center italic text-gray-400">Class roster workspace partition is empty.</td></tr>`;
+                return;
+            }
+            
+            let htmlBuffer = "";
+            students.forEach(student => {
+                htmlBuffer += `<tr class="hover:bg-slate-50 border-b border-gray-100">
+                    <td class="p-3 font-bold text-gray-900">${student.name.toUpperCase()}</td>`;
+                
+                sortedDates.forEach(date => {
+                    const match = records.find(r => r.studentName === student.name && r.dateString === date);
+                    if (match && match.isPresent) {
+                        htmlBuffer += `<td class="p-3 text-center text-emerald-600 font-extrabold">✓</td>`;
+                    } else {
+                        htmlBuffer += `<td class="p-3 text-center text-red-400 font-medium">✕</td>`;
+                    }
+                });
+                htmlBuffer += `</tr>`;
+            });
+            bodyContainer.innerHTML = htmlBuffer;
+        }
+
+        async function launchAttendanceScannerSession() {
+            if (!activeClassNodeId) { alert("Please select a Class Node structure."); return; }
+            appOperationMode = "ATTENDANCE";
+            currentSessionAttendanceMap = {};
+            
+            const students = await db.roster.where('classId').equals(activeClassNodeId).toArray();
+            students.forEach(s => { currentSessionAttendanceMap[s.markerId] = false; });
+            
+            questionLoggedIdsSet.clear();
+            document.getElementById('p2-log-stream').innerHTML = '<span class="text-slate-500 italic">No active signatures decoded yet...</span>';
+            document.getElementById('p2-live-counter').innerText = "0 Present Records Verified";
+            document.getElementById('active-scanning-node-badge').innerText = `📡 ATTENDANCE RUN ACTIVE`;
+            
+            document.getElementById('finish-scanning-action-btn').setAttribute("onclick", "terminateAttendanceScanAndReview()");
+            
+            document.getElementById('arena-phase-1').classList.add('hidden');
+            document.getElementById('arena-phase-2').classList.remove('hidden');
+            document.getElementById('arena-phase-3').classList.add('hidden');
+            document.getElementById('arena-attendance-review').classList.add('hidden');
+            
+            const arena = document.getElementById('play-tab');
+            if (arena.requestFullscreen) arena.requestFullscreen();
+            switchTab('play-tab');
+            armScannerEngineChannel(true);
+            initializeCameraHardwareDecoderStream();
+        }
+
+        async function terminateAttendanceScanAndReview() {
+            armScannerEngineChannel(false);
+            document.getElementById('arena-phase-2').classList.add('hidden');
+            document.getElementById('arena-attendance-review').classList.remove('hidden');
+            
+            const dateObj = new Date();
+            const dateString = dateObj.toLocaleDateString('default', { month: 'short', day: 'numeric', year: 'numeric' });
+            document.getElementById('attendance-audit-date-badge').innerText = `DATE: ${dateString.toUpperCase()}`;
+            
+            const students = await db.roster.where('classId').equals(activeClassNodeId).toArray();
+            const container = document.getElementById('attendance-review-list-box');
+            
+            container.innerHTML = students.map(s => {
+                const isPresent = currentSessionAttendanceMap[s.markerId] === true;
+                return `
+                    <div onclick="toggleAttendanceReviewNodeState(${s.markerId})" id="attendance-audit-row-${s.markerId}" class="p-3 rounded-xl border flex justify-between items-center cursor-pointer select-none transition ${isPresent ? 'bg-emerald-950/40 border-emerald-900 text-slate-100' : 'bg-slate-900/60 border-slate-800 text-slate-400'}">
+                        <span class="font-bold text-sm">${s.name.toUpperCase()} <span class="text-[10px] font-mono font-normal tracking-wide text-slate-500 ml-1">(ID: ${s.markerId})</span></span>
+                        <span id="attendance-audit-status-${s.markerId}" class="font-black text-base px-3 py-0.5 rounded-lg ${isPresent ? 'text-emerald-400 bg-emerald-950' : 'text-red-400 bg-slate-950'}">${isPresent ? 'PRESENT ✓' : 'ABSENT ✕'}</span>
+                    </div>`;
+            }).join('');
+        }
+
+        function toggleAttendanceReviewNodeState(markerId) {
+            currentSessionAttendanceMap[markerId] = !currentSessionAttendanceMap[markerId];
+            const isPresent = currentSessionAttendanceMap[markerId];
+            const row = document.getElementById(`attendance-audit-row-${markerId}`);
+            const badge = document.getElementById(`attendance-audit-status-${markerId}`);
+            
+            if (isPresent) {
+                row.className = "p-3 rounded-xl border flex justify-between items-center cursor-pointer select-none transition bg-emerald-950/40 border-emerald-900 text-slate-100";
+                badge.className = "font-black text-base px-3 py-0.5 rounded-lg text-emerald-400 bg-emerald-950";
+                badge.innerText = "PRESENT ✓";
+            } else {
+                row.className = "p-3 rounded-xl border flex justify-between items-center cursor-pointer select-none transition bg-slate-900/60 border-slate-800 text-slate-400";
+                badge.className = "font-black text-base px-3 py-0.5 rounded-lg text-red-400 bg-slate-950";
+                badge.innerText = "ABSENT ✕";
+            }
+        }
+
+        async function commitAttendanceVerificationSession() {
+            const dateObj = new Date();
+            const dateString = dateObj.toLocaleDateString('default', { month: 'short', day: 'numeric', year: 'numeric' });
+            const monthString = dateObj.toLocaleString('default', { month: 'long', year: 'numeric' });
+            
+            const students = await db.roster.where('classId').equals(activeClassNodeId).toArray();
+            
+            await db.transaction('rw', db.attendance, async () => {
+                for (let student of students) {
+                    const isPresent = currentSessionAttendanceMap[student.markerId] === true;
+                    const existing = await db.attendance.where({ classId: activeClassNodeId, studentName: student.name, dateString: dateString }).first();
+                    
+                    if (existing) {
+                        existing.isPresent = isPresent;
+                        await db.attendance.put(existing);
+                    } else {
+                        await db.attendance.add({
+                            classId: activeClassNodeId,
+                            studentName: student.name,
+                            dateString: dateString,
+                            monthString: monthString,
+                            isPresent: isPresent
+                        });
+                    }
+                }
+            });
+            
+            alert("Attendance registry context state committed cleanly.");
+            if (document.exitFullscreen) document.exitFullscreen();
+            appOperationMode = "QUIZ";
+            document.getElementById('finish-scanning-action-btn').setAttribute("onclick", "transitionToPhase3()");
+            switchTab('attendance-tab');
+        }
+
+        async function downloadAttendanceSpreadsheet() {
+            const targetMonth = document.getElementById('attendance-month-filter').value;
+            if (!activeClassNodeId || !targetMonth) { alert("Nothing configured to export."); return; }
+            
+            const students = await db.roster.where('classId').equals(activeClassNodeId).toArray();
+            const records = await db.attendance.where({ classId: activeClassNodeId, monthString: targetMonth }).toArray();
+            
+            const uniqueDatesSet = new Set();
+            records.forEach(r => uniqueDatesSet.add(r.dateString));
+            const sortedDates = Array.from(uniqueDatesSet).sort((a,b) => new Date(a) - new Date(b));
+            
+            const dataMatrix = students.map(student => {
+                const rowObj = { "Student Profile Name": student.name.toUpperCase() };
+                sortedDates.forEach(date => {
+                    const match = records.find(r => r.studentName === student.name && r.dateString === date);
+                    rowObj[date] = (match && match.isPresent) ? "PRESENT" : "ABSENT";
+                });
+                return rowObj;
+            });
+            
+            const worksheet = XLSX.utils.json_to_sheet(dataMatrix);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance");
+            XLSX.writeFile(workbook, `Attendance_Report_${targetMonth.replace(/[^a-z0-9]/gi, '_')}.xlsx`);
+        }
+
+        // ==========================================
         // 🎨 IMAGING & ZIP ARUCO LAYOUT ASSEMBLY
         // ==========================================
         function buildArUcoSVGStringMarkup(id) {
@@ -608,6 +837,9 @@
         // ==========================================
         async function launchQuizEvaluationRunner(quizId, quizTitle) {
             if (!activeClassNodeId) { alert("Please select a Class Node before running an evaluation session."); return; }
+            appOperationMode = "QUIZ";
+            document.getElementById('finish-scanning-action-btn').setAttribute("onclick", "transitionToPhase3()");
+            
             const currentClassRecord = await db.classes.get(activeClassNodeId);
             
             activeQuizFolderId = quizId;
@@ -642,6 +874,7 @@
             document.getElementById('arena-phase-1').classList.remove('hidden');
             document.getElementById('arena-phase-2').classList.add('hidden');
             document.getElementById('arena-phase-3').classList.add('hidden');
+            document.getElementById('arena-attendance-review').classList.add('hidden');
 
             const currentQ = activeQuestionsArray[questionCursorIndex];
             document.getElementById('p1-title-card').innerText = `QUESTION ${questionCursorIndex + 1} OF ${activeQuestionsArray.length}`;
@@ -656,6 +889,7 @@
             document.getElementById('arena-phase-1').classList.add('hidden');
             document.getElementById('arena-phase-2').classList.remove('hidden');
             document.getElementById('arena-phase-3').classList.add('hidden');
+            document.getElementById('arena-attendance-review').classList.add('hidden');
             armScannerEngineChannel(true);
         }
 
@@ -669,6 +903,7 @@
             document.getElementById('arena-phase-1').classList.add('hidden');
             document.getElementById('arena-phase-2').classList.add('hidden');
             document.getElementById('arena-phase-3').classList.remove('hidden');
+            document.getElementById('arena-attendance-review').classList.add('hidden');
 
             if(questionLoggedIdsSet.size === 0) {
                 document.getElementById('p3-analytics-bars-box').innerHTML = '<div class="text-slate-400 text-center italic text-sm py-8">Zero analytical data recorded during frame cycle.</div>';
@@ -756,17 +991,23 @@
                 db.roster.where({ classId: activeClassNodeId, markerId: markerId }).toArray().then(matches => {
                     if (matches.length > 0 && !questionLoggedIdsSet.has(markerId)) {
                         const profile = matches[0];
-                        const topEdgeY    = (corners[0].y + corners[1].y) / 2;
-                        const rightEdgeY  = (corners[1].y + corners[2].y) / 2;
-                        const bottomEdgeY = (corners[2].y + corners[3].y) / 2;
-                        const leftEdgeY   = (corners[3].y + corners[0].y) / 2;
                         
-                        let mappedAnswer = "A"; let lowestObservedPixelY = topEdgeY;
-                        if (rightEdgeY < lowestObservedPixelY) { mappedAnswer = "B"; lowestObservedPixelY = rightEdgeY; }
-                        if (bottomEdgeY < lowestObservedPixelY) { mappedAnswer = "C"; lowestObservedPixelY = bottomEdgeY; }
-                        if (leftEdgeY < lowestObservedPixelY) { mappedAnswer = "D"; lowestObservedPixelY = leftEdgeY; }
-                        
-                        registerScannedAnswerTelemetryPacket(profile, markerId, mappedAnswer);
+                        if (appOperationMode === "ATTENDANCE") {
+                            currentSessionAttendanceMap[markerId] = true;
+                            registerScannedAnswerTelemetryPacket(profile, markerId, "PRESENT");
+                        } else {
+                            const topEdgeY    = (corners[0].y + corners[1].y) / 2;
+                            const rightEdgeY  = (corners[1].y + corners[2].y) / 2;
+                            const bottomEdgeY = (corners[2].y + corners[3].y) / 2;
+                            const leftEdgeY   = (corners[3].y + corners[0].y) / 2;
+                            
+                            let mappedAnswer = "A"; let lowestObservedPixelY = topEdgeY;
+                            if (rightEdgeY < lowestObservedPixelY) { mappedAnswer = "B"; lowestObservedPixelY = rightEdgeY; }
+                            if (bottomEdgeY < lowestObservedPixelY) { mappedAnswer = "C"; lowestObservedPixelY = bottomEdgeY; }
+                            if (leftEdgeY < lowestObservedPixelY) { mappedAnswer = "D"; lowestObservedPixelY = leftEdgeY; }
+                            
+                            registerScannedAnswerTelemetryPacket(profile, markerId, mappedAnswer);
+                        }
                     }
                 });
             }
@@ -781,12 +1022,22 @@
             
             const log = document.getElementById('p2-log-stream');
             if(log.innerText.includes("No active data") || log.innerText.includes("No markers read")) log.innerHTML = '';
-            log.innerHTML = `
-                <div class="bg-slate-900 p-2 border border-slate-800 rounded-lg flex justify-between items-center font-semibold text-slate-200 fade-in-item">
-                    <span>✓ ${profile.name}</span>
-                    <span class="bg-indigo-950 text-indigo-400 font-mono font-bold px-1.5 py-0.5 rounded text-[10px]">Rotated: ${orientationLetterCode}</span>
-                </div>` + log.innerHTML;
-            document.getElementById('p2-live-counter').innerText = `${questionLoggedIdsSet.size} Responses Ingested`;
+            
+            if (appOperationMode === "ATTENDANCE") {
+                log.innerHTML = `
+                    <div class="bg-slate-900 p-2 border border-slate-800 rounded-lg flex justify-between items-center font-semibold text-slate-200 fade-in-item">
+                        <span>✓ ${profile.name}</span>
+                        <span class="bg-emerald-950 text-emerald-400 font-mono font-bold px-1.5 py-0.5 rounded text-[10px]">PRESENT</span>
+                    </div>` + log.innerHTML;
+                document.getElementById('p2-live-counter').innerText = `${questionLoggedIdsSet.size} Present Records Verified`;
+            } else {
+                log.innerHTML = `
+                    <div class="bg-slate-900 p-2 border border-slate-800 rounded-lg flex justify-between items-center font-semibold text-slate-200 fade-in-item">
+                        <span>✓ ${profile.name}</span>
+                        <span class="bg-indigo-950 text-indigo-400 font-mono font-bold px-1.5 py-0.5 rounded text-[10px]">Rotated: ${orientationLetterCode}</span>
+                    </div>` + log.innerHTML;
+                document.getElementById('p2-live-counter').innerText = `${questionLoggedIdsSet.size} Responses Ingested`;
+            }
         }
 
         async function toggleTryScanEngine() {
@@ -803,8 +1054,14 @@
                     const remaining = rosterList.filter(s => !questionLoggedIdsSet.has(s.markerId));
                     if(remaining.length === 0) { clearInterval(tryScanTimerInterval); toggleTryScanEngine(); return; }
                     const target = remaining[Math.floor(Math.random() * remaining.length)];
-                    const choices = ["A", "B", "C", "D"]; 
-                    registerScannedAnswerTelemetryPacket(target, target.markerId, choices[Math.floor(Math.random() * 4)]);
+                    
+                    if (appOperationMode === "ATTENDANCE") {
+                        currentSessionAttendanceMap[target.markerId] = true;
+                        registerScannedAnswerTelemetryPacket(target, target.markerId, "PRESENT");
+                    } else {
+                        const choices = ["A", "B", "C", "D"]; 
+                        registerScannedAnswerTelemetryPacket(target, target.markerId, choices[Math.floor(Math.random() * 4)]);
+                    }
                 }, 1000);
             }
         }
