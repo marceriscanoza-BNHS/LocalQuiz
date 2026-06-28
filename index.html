@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/dexie@3.2.4/dist/dexie.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     
     <script src="https://cdn.jsdelivr.net/gh/damianofalcioni/js-aruco2@master/src/cv.js"></script>
@@ -25,7 +26,7 @@
                 height: 297mm;
                 background: #fff;
             }
-            #master-nav, .no-print, button, select, input, .class-selector-box {
+            #master-nav, .no-print, button {
                 display: none !important;
             }
             #main-content-wrapper {
@@ -63,10 +64,11 @@
 
     <nav id="master-nav" class="bg-indigo-700 text-white shadow-md no-print sticky top-0 z-50">
         <div class="container mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-3">
-            <h1 class="text-base font-bold tracking-wider flex items-center gap-2">📐 ArUco Classroom Scanner</h1>
+            <h1 class="text-base font-bold tracking-wider flex items-center gap-2">📐 ArUco Classroom Suite</h1>
             <div class="flex flex-wrap gap-1.5 text-xs">
                 <button onclick="switchTab('roster-tab')" class="px-3 py-2 rounded bg-indigo-800 font-medium hover:bg-indigo-900 transition">Group Roster</button>
                 <button onclick="switchTab('quiz-tab')" class="px-3 py-2 rounded bg-indigo-800 font-medium hover:bg-indigo-900 transition">Quiz Folder Bank</button>
+                <button onclick="switchTab('attendance-tab')" class="px-3 py-2 rounded bg-teal-600 font-bold hover:bg-teal-700 transition">📅 Attendance Tracker</button>
                 <button onclick="switchTab('summary-tab')" class="px-3 py-2 rounded bg-purple-600 text-white font-bold hover:bg-purple-700 transition">🏆 Leaderboard</button>
             </div>
         </div>
@@ -75,25 +77,10 @@
     <main id="main-content-wrapper" class="container mx-auto p-4 max-w-5xl">
         
         <section id="roster-tab" class="tab-content bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-            
-            <div class="bg-slate-900 text-white p-4 rounded-xl mb-6 shadow-md no-print flex flex-col md:flex-row justify-between items-start md:items-center gap-4 class-selector-box">
-                <div>
-                    <h3 class="text-sm font-black tracking-wider text-indigo-400 uppercase">🏫 Active Class Node</h3>
-                    <select id="master-class-node-dropdown" onchange="handleClassSelectionContextChange()" class="mt-1 block w-full md:w-64 bg-slate-800 border border-slate-700 text-white rounded-lg p-2 font-bold text-xs focus:ring-2 focus:ring-indigo-500"></select>
-                </div>
-                <div class="w-full md:w-auto flex flex-col sm:flex-row items-end gap-2">
-                    <div class="w-full sm:w-auto">
-                        <label class="block text-[10px] text-slate-400 font-bold uppercase mb-0.5">Create New Node</label>
-                        <input type="text" id="new-class-node-title" placeholder="e.g., Grade 10 - Section A" class="w-full sm:w-48 bg-slate-800 border border-slate-700 text-white rounded-lg p-2 text-xs">
-                    </div>
-                    <button onclick="createNewClassNode()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2 rounded-lg h-9 transition">Initialize Class Node</button>
-                </div>
-            </div>
-
             <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-4 no-print">
                 <div>
                     <h2 class="text-xl font-bold text-gray-800">Student Profiles & Card Print Setup</h2>
-                    <p class="text-xs text-gray-400 mt-0.5 font-medium">Cards feature maximized ArUco tracking boxes with isolated class segment scopes.</p>
+                    <p class="text-xs text-gray-400 mt-0.5 font-medium">Cards feature maximized ArUco tracking boxes with minimal wasted white space.</p>
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <button onclick="downloadAllCardsAsZip()" class="bg-indigo-600 text-white px-4 py-2.5 text-xs font-bold rounded-lg shadow hover:bg-indigo-700 transition">📦 Download All (.ZIP)</button>
@@ -104,10 +91,10 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 no-print">
                 <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
                     <h3 class="font-bold text-xs uppercase tracking-wider text-slate-600 mb-1">Bulk Upload Profiles (.csv / .xlsx)</h3>
-                    <p class="text-[11px] text-gray-400 mb-3 leading-relaxed">Headers required exactly: <code class="bg-gray-200 px-1 py-0.5 rounded text-slate-700 font-mono font-bold">Name</code> and <code class="bg-gray-200 px-1 py-0.5 rounded text-slate-700 font-mono font-bold">ID</code> (IDs map from 0 to 999).</p>
+                    <p class="text-[11px] text-gray-400 mb-3 leading-relaxed">Headers required exactly: <code class="bg-gray-200 px-1 py-0.5 rounded text-slate-700 font-mono font-bold">Name</code> and <code class="bg-gray-200 px-1 py-0.5 rounded text-slate-700 font-mono font-bold">ID</code> (IDs map from 0 to 99).</p>
                     <div class="space-y-2">
                         <input type="file" id="roster-file-input" accept=".csv, .xlsx, .xls" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
-                        <button onclick="processRosterUpload()" class="w-full bg-indigo-600 text-white py-2 text-xs rounded-lg font-bold hover:bg-indigo-700 transition shadow-sm">Import into Active Class</button>
+                        <button onclick="processRosterUpload()" class="w-full bg-indigo-600 text-white py-2 text-xs rounded-lg font-bold hover:bg-indigo-700 transition shadow-sm">Import Roster File</button>
                     </div>
                 </div>
 
@@ -174,12 +161,38 @@
             <div id="quiz-directory" class="space-y-2"></div>
         </section>
 
+        <section id="attendance-tab" class="tab-content hidden bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4 mb-4">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800">📅 Roll Call Attendance Tracker</h2>
+                    <p class="text-xs text-gray-400 font-medium">Scan markers to quickly verify classroom presence logs.</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 text-xs">
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase">Target Month</label>
+                        <input type="month" id="attendance-month-filter" onchange="renderAttendanceMatrixSheet()" class="border p-2 rounded-lg font-bold text-gray-700">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-gray-400 uppercase">Tracking Session Date</label>
+                        <input type="date" id="attendance-session-date" class="border p-2 rounded-lg font-bold text-gray-700">
+                    </div>
+                    <button onclick="startLiveAttendanceScanning()" class="bg-teal-600 text-white font-bold px-4 py-2.5 rounded-lg shadow hover:bg-teal-700 transition self-end mt-4 md:mt-0">📷 Start Scanning</button>
+                    <button onclick="exportAttendanceToExcel()" class="bg-emerald-600 text-white font-bold px-4 py-2.5 rounded-lg shadow hover:bg-emerald-700 transition self-end mt-4 md:mt-0">📥 Export Sheet (.xlsx)</button>
+                    <button onclick="clearAllAttendanceRecords()" class="bg-red-50 text-red-600 border border-red-200 px-3 py-2.5 rounded-lg font-bold hover:bg-red-100 transition self-end">Reset Matrix</button>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto border rounded-xl">
+                <table id="attendance-reporting-matrix" class="w-full text-left border-collapse text-xs">
+                    </table>
+            </div>
+        </section>
+
         <section id="play-tab" class="tab-content hidden fixed inset-0 bg-slate-900 text-white z-50 overflow-hidden flex flex-col">
             
             <div id="arena-phase-1" class="flex-1 flex flex-col p-6 justify-between max-w-4xl mx-auto w-full">
                 <div class="flex justify-between items-center text-xs tracking-widest text-indigo-400 font-bold font-mono border-b border-slate-800 pb-3">
                     <span id="p1-title-card">QUIZ RUNNER ACTIVE</span>
-                    <span id="p1-class-node-indicator" class="bg-indigo-950 text-indigo-300 px-2 py-1 rounded">CLASS: NONE</span>
                     <button onclick="exitFullscreenQuizArena()" class="text-red-400 bg-red-950/40 border border-red-900 px-3 py-1 rounded-lg hover:bg-red-900 hover:text-white transition">✕ Close Arena</button>
                 </div>
                 
@@ -207,13 +220,13 @@
                         <button id="ctrl-try-scan" onclick="toggleTryScanEngine()" class="bg-cyan-600/90 text-white px-3 py-1.5 text-xs font-bold rounded-full shadow backdrop-blur-md hover:bg-cyan-500">🔬 TRY SCAN (SIMULATOR)</button>
                         <button onclick="toggleCameraMirrorFlip()" class="bg-slate-800/90 text-white px-3 py-1.5 text-xs font-bold rounded-full shadow backdrop-blur-md hover:bg-slate-700">🔄 Flip Lens</button>
                     </div>
-                    <div id="active-scanning-node-badge" class="absolute bottom-4 left-4 z-30 bg-emerald-600 text-white px-4 py-1.5 rounded-full text-xs font-mono font-bold tracking-widest animate-pulse border border-emerald-400/30">📡 LIVE DECODING ACTIVE</div>
+                    <div id="live-scanner-banner-alert" class="absolute bottom-4 left-4 z-30 bg-emerald-600 text-white px-4 py-1.5 rounded-full text-xs font-mono font-bold tracking-widest animate-pulse border border-emerald-400/30">📡 LIVE ENGINE DECODING SCANNER</div>
                 </div>
 
                 <div class="w-full md:w-80 bg-slate-950 border-t md:border-t-0 md:border-l border-slate-800 flex flex-col justify-between h-2/5 md:h-full z-20">
                     <div class="p-4 border-b border-slate-800 bg-slate-900/60 flex justify-between items-center">
                         <div>
-                            <h3 class="text-xs font-bold tracking-wider text-slate-400 uppercase">Incoming Logs</h3>
+                            <h3 id="panel-log-title" class="text-xs font-bold tracking-wider text-slate-400 uppercase">Incoming Logs</h3>
                             <p id="p2-live-counter" class="text-xs font-mono font-bold text-indigo-400">0 Responses Ingested</p>
                         </div>
                     </div>
@@ -223,7 +236,7 @@
                     </div>
 
                     <div class="p-4 border-t border-slate-800 bg-slate-900/40">
-                        <button onclick="transitionToPhase3()" class="w-full bg-indigo-600 text-white py-3 rounded-xl text-sm font-bold shadow hover:bg-indigo-500 active:scale-98 transition">⏹ FINISH SCANNING</button>
+                        <button id="scanner-finish-action-btn" onclick="transitionToPhase3()" class="w-full bg-indigo-600 text-white py-3 rounded-xl text-sm font-bold shadow hover:bg-indigo-500 active:scale-98 transition">⏹ FINISH SCANNING</button>
                     </div>
                 </div>
             </div>
@@ -250,9 +263,9 @@
             <div class="flex justify-between items-center border-b pb-3 mb-4">
                 <div>
                     <h2 class="text-xl font-bold text-gray-800">🏆 Assessment Leaderboard</h2>
-                    <p class="text-xs text-gray-400 font-medium">Rankings segmented by current class standings profile metrics.</p>
+                    <p class="text-xs text-gray-400 font-medium">Rankings refresh instantly at the conclusion of active testing tracks.</p>
                 </div>
-                <button onclick="purgeLeaderboardMetrics()" class="bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 text-xs rounded-lg font-bold hover:bg-red-100 transition">Reset Current Class Standings</button>
+                <button onclick="purgeLeaderboardMetrics()" class="bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 text-xs rounded-lg font-bold hover:bg-red-100 transition">Reset All Standings</button>
             </div>
             <div id="master-leaderboard-view" class="space-y-2 max-w-md mx-auto"></div>
         </section>
@@ -260,25 +273,16 @@
     </main>
 
     <script>
-        // Database Schema with explicit Class Node table segments
+        // 🗄️ UPGRADED DATABASE VERSION TO INCORPORATE ATTENDANCE DICTIONARIES
         const db = new Dexie("ArUcoClassroomDatabase");
         db.version(4).stores({
-            classes: "++id, title",
-            roster: "++id, classId, markerId, name",
+            roster: "markerId, name",
             quizzes: "++id, title",
             questions: "++id, quizId, question, choiceA, choiceB, choiceC, choiceD, correctAnswer",
-            scores: "++id, classId, studentName, score"
+            scores: "studentName, score",
+            attendance: "++id, [date+markerId], date, markerId"
         });
 
-        // Open connection explicitly
-        db.open().catch(function (err) {
-            console.error("Database initialization failed: ", err);
-            if (confirm("Storage node collision detected. Reset operational data structures to restore initialization layers?")) {
-                db.delete().then(() => window.location.reload());
-            }
-        });
-
-        let activeClassNodeId = null;
         let activeQuizFolderId = null;
         let activeQuestionsArray = [];
         let questionCursorIndex = 0;
@@ -292,56 +296,16 @@
         let questionAnswersBufferMap = {};
         let arucoEngineDetector = null;
 
-        // Routing engine tabs
+        // 📅 ATTENDANCE RUNTIME CONTROLLERS
+        let globalScannerOperationMode = "quiz"; // Options: 'quiz' | 'attendance'
+
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
             document.getElementById(tabId).classList.remove('hidden');
             if(tabId === 'quiz-tab') { syncFolderDropdowns(); loadQuizDirectory(); }
-            if(tabId === 'roster-tab') { syncClassDropdownInterface(); loadRosterCards(); }
+            if(tabId === 'roster-tab') { loadRosterCards(); }
             if(tabId === 'summary-tab') { displayMasterLeaderboard(); }
-        }
-
-        // ==========================================
-        // 🏫 CLASS NODE CORE LOGIC SEGMENTATION
-        // ==========================================
-        async function syncClassDropdownInterface() {
-            try {
-                const classes = await db.classes.toArray();
-                const masterDropdown = document.getElementById('master-class-node-dropdown');
-                
-                if (classes.length === 0) {
-                    // Inject a fallback default class node if none exists
-                    const defaultId = await db.classes.add({ title: "Default Class Node" });
-                    activeClassNodeId = defaultId;
-                    await syncClassDropdownInterface();
-                    return;
-                }
-                
-                if (!activeClassNodeId) {
-                    activeClassNodeId = classes[0].id;
-                }
-                
-                masterDropdown.innerHTML = classes.map(c => `<option value="${c.id}" ${c.id === activeClassNodeId ? 'selected' : ''}>${c.title}</option>`).join('');
-            } catch (e) { console.error("Class dropdown synchronization error:", e); }
-        }
-
-        async function createNewClassNode() {
-            const input = document.getElementById('new-class-node-title');
-            const title = input.value.trim();
-            if (!title) { alert("Please provide a name for the new Class Node."); return; }
-            try {
-                const newId = await db.classes.add({ title: title });
-                activeClassNodeId = newId;
-                input.value = '';
-                await syncClassDropdownInterface();
-                await loadRosterCards();
-                alert(`Successfully initialized Class Node: ${title}`);
-            } catch (e) { alert("Failed to add Class Node structure: " + e.message); }
-        }
-
-        function handleClassSelectionContextChange() {
-            activeClassNodeId = parseInt(document.getElementById('master-class-node-dropdown').value);
-            loadRosterCards();
+            if(tabId === 'attendance-tab') { renderAttendanceMatrixSheet(); }
         }
 
         function extractObjectValueByNormalizedKey(rowObject, targetedKeyString) {
@@ -352,13 +316,9 @@
             return null;
         }
 
-        // ==========================================
-        // 📋 ROSTER ROBUST PROCESSING LAYERS
-        // ==========================================
         function processRosterUpload() {
-            if (!activeClassNodeId) { alert("Please initialize or select a Class Node before importing."); return; }
             const input = document.getElementById('roster-file-input');
-            if(!input.files.length) { alert("Please select a valid Roster spreadsheet asset."); return; }
+            if(!input.files.length) { alert("Please select a valid Roster file."); return; }
             const file = input.files[0];
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -372,89 +332,19 @@
                             const idVal = extractObjectValueByNormalizedKey(row, 'id') || extractObjectValueByNormalizedKey(row, 'markerid');
                             const markerId = parseInt(idVal);
                             if(nameVal && !isNaN(markerId) && markerId >= 0 && markerId <= 999) {
-                                // Add specifically to the active class partition context boundary
-                                await db.roster.add({ classId: activeClassNodeId, markerId: markerId, name: nameVal.toString().trim() });
+                                await db.roster.put({ markerId: markerId, name: nameVal.toString().trim() });
                             }
                         }
-                    }).then(() => { input.value = ''; loadRosterCards(); alert("Roster imported cleanly into active class context."); })
-                    .catch(err => alert("Database transaction failure: " + err.message));
-                } catch(err) { alert("Failed to process spreadsheet file data matrix: " + err.message); }
+                    }).then(() => { input.value = ''; loadRosterCards(); alert("Roster loaded successfully."); });
+                } catch(err) { alert("Error reading spreadsheet: " + err.message); }
             };
             reader.readAsArrayBuffer(file);
-        }
-
-        async function saveManualStudent() {
-            if (!activeClassNodeId) { alert("Please initialize or select an active Class Node container."); return; }
-            const nameEl = document.getElementById('manual-student-name');
-            const idEl = document.getElementById('manual-marker-id');
-            const name = nameEl.value.trim(); const id = parseInt(idEl.value);
-            if(!name || isNaN(id) || id < 0 || id > 999) { alert("Provide a valid profile name and ID mapped cleanly from 0 up to 999."); return; }
-            try {
-                await db.roster.add({ classId: activeClassNodeId, markerId: id, name: name });
-                nameEl.value = ''; idEl.value = ''; 
-                await loadRosterCards();
-            } catch (err) { alert("Failed to commit profile registration layers: " + err.message); }
-        }
-
-        async function removeStudentProfile(id) { if(confirm("Permanently remove this student profile entry?")) { await db.roster.delete(id); loadRosterCards(); } }
-
-        async function loadRosterCards() {
-            try {
-                if (!activeClassNodeId) await syncClassDropdownInterface();
-                const container = document.getElementById('print-area'); 
-                // Only load roster entries matched to the active isolated class node boundary
-                const list = await db.roster.where('classId').equals(activeClassNodeId).toArray();
-                
-                if(list.length === 0) { 
-                    container.innerHTML = `<div class="col-span-full text-center text-xs p-8 text-gray-400 border border-dashed rounded-xl">No active student roster discovered inside this Class Node.</div>`; 
-                    return; 
-                }
-                container.innerHTML = list.map(s => `
-                    <div class="print-card bg-white border-[6px] border-black rounded-2xl shadow-sm flex flex-col items-center justify-between w-full h-[460px] max-w-md mx-auto relative group p-6 fade-in-item">
-                        <div class="absolute top-1.5 font-black text-3xl text-black">A</div>
-                        <div class="absolute right-3.5 top-1/2 -translate-y-1/2 font-black text-3xl text-black rotate-90">B</div>
-                        <div class="absolute bottom-1.5 font-black text-3xl text-black rotate-180">C</div>
-                        <div class="absolute left-3.5 top-1/2 -translate-y-1/2 font-black text-3xl text-black -rotate-90">D</div>
-                        <div class="absolute top-3 right-3 flex gap-1 no-print">
-                            <button onclick="renderAndDownloadCardImage(${s.markerId}, '${s.name}')" class="bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded text-[10px] hover:bg-indigo-100">📥 Save PNG</button>
-                            <button onclick="removeStudentProfile(${s.id})" class="bg-red-50 text-red-600 font-bold px-1.5 py-0.5 rounded text-[10px] hover:bg-red-100">✕</button>
-                        </div>
-                        <div id="marker-node-box-${s.markerId}" class="w-64 h-64 p-0.5 flex items-center justify-center my-auto mt-7 transform scale-110">${buildArUcoSVGStringMarkup(s.markerId)}</div>
-                        <div class="w-full text-center border-t border-gray-100 pt-2 mt-auto">
-                            <h5 class="font-black text-sm text-gray-900 truncate px-4">${s.name.toUpperCase()}</h5>
-                            <span class="text-[10px] font-mono text-gray-400 font-bold">NODE ID: ${s.markerId}</span>
-                        </div>
-                    </div>`).join('');
-            } catch (e) { console.error("Roster matrix visualization layout processing crash: ", e); }
-        }
-
-        // ==========================================
-        // 📂 QUIZ OPERATIONS DEEP LAYERS
-        // ==========================================
-        async function syncFolderDropdowns() {
-            try {
-                const dropdowns = document.querySelectorAll('.folder-dropdown-sync'); const folders = await db.quizzes.toArray();
-                dropdowns.forEach(drop => {
-                    drop.innerHTML = '<option value="">-- Choose Quiz Destination --</option>';
-                    folders.forEach(f => { drop.innerHTML += `<option value="${f.id}">${f.title}</option>`; });
-                });
-            } catch (e) { console.error("Quiz bank dropdown structure synchronization crash: ", e); }
-        }
-
-        async function saveQuizFolder() {
-            const el = document.getElementById('quiz-folder-title'); const title = el.value.trim(); if(!title) return;
-            try {
-                await db.quizzes.add({ title: title }); 
-                el.value = ''; 
-                await syncFolderDropdowns(); 
-                await loadQuizDirectory();
-            } catch (err) { alert("Could not execute folder generation routine: " + err.message); }
         }
 
         function processQuestionsUpload() {
             const folderId = parseInt(document.getElementById('bulk-target-folder').value);
             const input = document.getElementById('questions-file-input');
-            if(!folderId || !input.files.length) { alert("Choose a folder track destination and link a valid processing asset."); return; }
+            if(!folderId || !input.files.length) { alert("Choose a folder and assign an input file asset."); return; }
             const file = input.files[0];
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -477,11 +367,19 @@
                                 });
                             }
                         }
-                    }).then(() => { input.value = ''; loadQuizDirectory(); alert("Quiz bank entries uploaded safely."); })
-                    .catch(err => alert("Failed writing to local database nodes: " + err.message));
-                } catch(err) { alert("File schema parsing logic failure: " + err.message); }
+                    }).then(() => { input.value = ''; loadQuizDirectory(); alert("Questions imported successfully."); });
+                } catch(err) { alert("Parser file error: " + err.message); }
             };
             reader.readAsArrayBuffer(file);
+        }
+
+        async function saveManualStudent() {
+            const nameEl = document.getElementById('manual-student-name');
+            const idEl = document.getElementById('manual-marker-id');
+            const name = nameEl.value.trim(); const id = parseInt(idEl.value);
+            if(!name || isNaN(id) || id < 0 || id > 999) { alert("Provide a valid name and ID scoped between 0 and 999."); return; }
+            await db.roster.put({ markerId: id, name: name });
+            nameEl.value = ''; idEl.value = ''; loadRosterCards();
         }
 
         async function saveManualQuestion() {
@@ -490,50 +388,56 @@
             const a = document.getElementById('mq-a').value.trim(); const b = document.getElementById('mq-b').value.trim();
             const c = document.getElementById('mq-c').value.trim(); const d = document.getElementById('mq-d').value.trim();
             const correct = document.getElementById('mq-correct').value;
-            if(!folderId || !questionText || !a || !b || !c || !d || !correct) { alert("Please input all mandatory variables manually."); return; }
-            try {
-                await db.questions.add({ quizId: folderId, question: questionText, choiceA: a, choiceB: b, choiceC: c, choiceD: d, correctAnswer: correct });
-                document.getElementById('mq-text').value = ''; document.getElementById('mq-a').value = ''; document.getElementById('mq-b').value = ''; document.getElementById('mq-c').value = ''; document.getElementById('mq-d').value = ''; document.getElementById('mq-correct').value = '';
-                await loadQuizDirectory(); alert("Manual quiz question registered.");
-            } catch (err) { alert("Failed storing tracking row: " + err.message); }
+            if(!folderId || !questionText || !a || !b || !c || !d || !correct) { alert("Please complete all individual fields manually."); return; }
+            await db.questions.add({ quizId: folderId, question: questionText, choiceA: a, choiceB: b, choiceC: c, choiceD: d, correctAnswer: correct });
+            document.getElementById('mq-text').value = ''; document.getElementById('mq-a').value = ''; document.getElementById('mq-b').value = ''; document.getElementById('mq-c').value = ''; document.getElementById('mq-d').value = ''; document.getElementById('mq-correct').value = '';
+            loadQuizDirectory(); alert("Manual entry question stored successfully.");
         }
 
+        async function saveQuizFolder() {
+            const el = document.getElementById('quiz-folder-title'); const title = el.value.trim(); if(!title) return;
+            await db.quizzes.add({ title: title }); el.value = ''; syncFolderDropdowns(); loadQuizDirectory();
+        }
+
+        async function removeStudentProfile(markerId) { if(confirm("Permanently wipe this entry out?")) { await db.roster.delete(markerId); loadRosterCards(); } }
         async function removeQuizFolder(quizId) {
-            if(confirm("Wipe this entire folder container along with all contained matrix rows permanently?")) {
+            if(confirm("Completely wipe this folder track along with all internal questions nested inside?")) {
                 await db.quizzes.delete(quizId); await db.questions.where('quizId').equals(quizId).delete(); syncFolderDropdowns(); loadQuizDirectory();
             }
         }
 
-        async function loadQuizDirectory() {
-            try {
-                const container = document.getElementById('quiz-directory'); const list = await db.quizzes.toArray();
-                if(list.length === 0) { container.innerHTML = `<div class="text-xs text-gray-400 italic text-center p-4 border border-dashed rounded-lg">No active quiz folder metrics mapped.</div>`; return; }
-                container.innerHTML = '';
-                for(let q of list) {
-                    const count = await db.questions.where('quizId').equals(q.id).count();
-                    container.innerHTML += `
-                        <div class="p-3 bg-slate-50 border rounded-xl flex justify-between items-center shadow-sm text-xs fade-in-item">
-                            <div><h4 class="font-bold text-gray-800">📁 ${q.title}</h4><span class="text-gray-400 font-medium">${count} questions</span></div>
-                            <div class="flex gap-1">
-                                ${count > 0 ? `<button onclick="launchQuizEvaluationRunner(${q.id}, '${q.title}')" class="bg-indigo-600 text-white font-bold px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition shadow-sm">Launch Quiz 🚀</button>` : `<span class="bg-gray-200 text-gray-400 px-2 py-1.5 rounded-lg font-medium">Empty</span>`}
-                                <button onclick="removeQuizFolder(${q.id})" class="text-red-600 hover:bg-red-50 border border-red-200 px-2 py-1.5 rounded-lg font-medium transition">Delete</button>
-                            </div>
-                        </div>`;
-                }
-            } catch (e) { console.error("Quiz collection listing runtime error: ", e); }
+        async function syncFolderDropdowns() {
+            const dropdowns = document.querySelectorAll('.folder-dropdown-sync'); const folders = await db.quizzes.toArray();
+            dropdowns.forEach(drop => {
+                drop.innerHTML = '<option value="">-- Choose Quiz Destination --</option>';
+                folders.forEach(f => { drop.innerHTML += `<option value="${f.id}">${f.title}</option>`; });
+            });
         }
 
-        // ==========================================
-        // 🎨 IMAGING & ZIP ARUCO LAYOUT ASSEMBLY
-        // ==========================================
+        async function loadQuizDirectory() {
+            const container = document.getElementById('quiz-directory'); const list = await db.quizzes.toArray();
+            if(list.length === 0) { container.innerHTML = `<div class="text-xs text-gray-400 italic text-center p-4 border border-dashed rounded-lg">No active evaluation tracks.</div>`; return; }
+            container.innerHTML = '';
+            for(let q of list) {
+                const count = await db.questions.where('quizId').equals(q.id).count();
+                container.innerHTML += `
+                    <div class="p-3 bg-slate-50 border rounded-xl flex justify-between items-center shadow-sm text-xs fade-in-item">
+                        <div><h4 class="font-bold text-gray-800">📁 ${q.title}</h4><span class="text-gray-400 font-medium">${count} questions</span></div>
+                        <div class="flex gap-1">
+                            ${count > 0 ? `<button onclick="launchQuizEvaluationRunner(${q.id}, '${q.title}')" class="bg-indigo-600 text-white font-bold px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition shadow-sm">Launch Quiz 🚀</button>` : `<span class="bg-gray-200 text-gray-400 px-2 py-1.5 rounded-lg font-medium">Empty</span>`}
+                            <button onclick="removeQuizFolder(${q.id})" class="text-red-600 hover:bg-red-50 border border-red-200 px-2 py-1.5 rounded-lg font-medium transition">Delete</button>
+                        </div>
+                    </div>`;
+            }
+        }
+
+        // 📐 MAXIMIZED ARUCO GENERATOR MATRIX ENGINE
         function buildArUcoSVGStringMarkup(id) {
             if (typeof AR !== 'undefined') {
-                try {
-                    const dictionary = new AR.Dictionary("ARUCO");
-                    return dictionary.generateSVG(id);
-                } catch (e) { console.error(e); }
+                const dictionary = new AR.Dictionary("ARUCO");
+                return dictionary.generateSVG(id);
             }
-            return `<div class="text-[10px] text-red-500">Processing layout asset context mismatch error</div>`;
+            return `<div class="text-[10px] text-red-500">Error loading library layout engine</div>`;
         }
 
         function convertSvgToImagePromise(svgElement) {
@@ -545,56 +449,75 @@
                     img.onload = () => resolve(img);
                     img.onerror = (e) => reject(e);
                     img.src = encodedSvgData;
-                } catch (err) { reject(err); }
+                } catch (err) {
+                    reject(err);
+                }
             });
         }
 
         function drawCardToCanvasContext(ctx, markerImageElement, studentName, id) {
             ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, 800, 1000);
             ctx.lineWidth = 16; ctx.strokeStyle = "#000000"; ctx.strokeRect(0, 0, 800, 1000);
+            
             ctx.fillStyle = "#000000"; ctx.font = "900 90px sans-serif"; ctx.textBaseline = "middle"; ctx.textAlign = "center";
             ctx.fillText("A", 400, 65);
             ctx.save(); ctx.translate(735, 500); ctx.rotate(Math.PI / 2); ctx.fillText("B", 0, 0); ctx.restore();
             ctx.save(); ctx.translate(400, 935); ctx.rotate(Math.PI); ctx.fillText("C", 0, 0); ctx.restore();
             ctx.save(); ctx.translate(65, 500); ctx.rotate(-Math.PI / 2); ctx.fillText("D", 0, 0); ctx.restore();
+            
             ctx.drawImage(markerImageElement, 130, 150, 540, 540);
+            
             ctx.fillStyle = "#000000"; ctx.font = "bold 44px sans-serif"; ctx.fillText(studentName.toUpperCase(), 400, 780);
             ctx.fillStyle = "#6b7280"; ctx.font = "bold 22px monospace"; ctx.fillText(`ARUCO IDENTIFICATION KEY: ${id}`, 400, 835);
         }
 
         async function renderAndDownloadCardImage(id, studentName) {
             const svgElement = document.querySelector(`#marker-node-box-${id} svg`);
-            if(!svgElement) { alert("Rendering target frame element structure missing."); return; }
+            if(!svgElement) { alert("Marker asset element structure missing from viewport."); return; }
+            
             try {
                 const img = await convertSvgToImagePromise(svgElement);
-                const canvas = document.createElement('canvas'); canvas.width = 800; canvas.height = 1000;
+                const canvas = document.createElement('canvas');
+                canvas.width = 800; canvas.height = 1000;
                 const ctx = canvas.getContext('2d');
+                
                 drawCardToCanvasContext(ctx, img, studentName, id);
+                
                 const downloadLink = document.createElement('a');
                 downloadLink.download = `${studentName.replace(/[^a-z0-9]/gi, '_')}_ID_${id}.png`;
                 downloadLink.href = canvas.toDataURL("image/png");
                 document.body.appendChild(downloadLink); downloadLink.click(); document.body.removeChild(downloadLink);
-            } catch (err) { alert("Asset processing pipeline mismatch: " + err.message); }
+            } catch (err) {
+                alert("Failed to extract marker image asset: " + err.message);
+            }
         }
 
         async function downloadAllCardsAsZip() {
-            if (!activeClassNodeId) { alert("Please select a Class Node structure."); return; }
-            const list = await db.roster.where('classId').equals(activeClassNodeId).toArray();
-            if(list.length === 0) { alert("Active Class Node configuration roster database space is empty."); return; }
+            const list = await db.roster.toArray();
+            if(list.length === 0) { alert("Your Student Roster is completely empty."); return; }
+            
             const zip = new JSZip();
+            
             for(let s of list) {
                 const svgElement = document.querySelector(`#marker-node-box-${s.markerId} svg`);
                 if(!svgElement) continue; 
+                
                 try {
                     const img = await convertSvgToImagePromise(svgElement);
-                    const canvas = document.createElement('canvas'); canvas.width = 800; canvas.height = 1000;
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 800; canvas.height = 1000;
                     const ctx = canvas.getContext('2d');
+                    
                     drawCardToCanvasContext(ctx, img, s.name, s.markerId);
+                    
                     const base64Data = canvas.toDataURL("image/png").split(',')[1];
                     const sanitizedFileName = `${s.name.replace(/[^a-z0-9]/gi, '_')}_ID_${s.markerId}.png`;
                     zip.file(sanitizedFileName, base64Data, {base64: true});
-                } catch (e) { console.error(`Skipping engine profile element generation loop key: ${s.markerId}`, e); }
+                } catch (e) {
+                    console.error(`Skipping element build sequence ID: ${s.markerId}`, e);
+                }
             }
+            
             zip.generateAsync({type:"blob"}).then(function(content) {
                 const downloadLink = document.createElement('a');
                 downloadLink.download = "Classroom_ArUco_Quiz_Cards.zip";
@@ -603,41 +526,106 @@
             });
         }
 
+        async function loadRosterCards() {
+            const container = document.getElementById('print-area'); const list = await db.roster.toArray();
+            if(list.length === 0) { container.innerHTML = `<div class="col-span-full text-center text-xs p-8 text-gray-400 border border-dashed rounded-xl">No active roster students discovered.</div>`; return; }
+            container.innerHTML = list.map(s => `
+                <div class="print-card bg-white border-[6px] border-black rounded-2xl shadow-sm flex flex-col items-center justify-between w-full h-[460px] max-w-md mx-auto relative group p-6 fade-in-item">
+                    <div class="absolute top-1.5 font-black text-3xl text-black">A</div>
+                    <div class="absolute right-3.5 top-1/2 -translate-y-1/2 font-black text-3xl text-black rotate-90">B</div>
+                    <div class="absolute bottom-1.5 font-black text-3xl text-black rotate-180">C</div>
+                    <div class="absolute left-3.5 top-1/2 -translate-y-1/2 font-black text-3xl text-black -rotate-90">D</div>
+                    
+                    <div class="absolute top-3 right-3 flex gap-1 no-print">
+                        <button onclick="renderAndDownloadCardImage(${s.markerId}, '${s.name}')" class="bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded text-[10px] hover:bg-indigo-100">📥 Save PNG</button>
+                        <button onclick="removeStudentProfile(${s.markerId})" class="bg-red-50 text-red-600 font-bold px-1.5 py-0.5 rounded text-[10px] hover:bg-red-100">✕</button>
+                    </div>
+                    
+                    <div id="marker-node-box-${s.markerId}" class="w-64 h-64 p-0.5 flex items-center justify-center my-auto mt-7 transform scale-110">${buildArUcoSVGStringMarkup(s.markerId)}</div>
+                    
+                    <div class="w-full text-center border-t border-gray-100 pt-2 mt-auto">
+                        <h5 class="font-black text-sm text-gray-900 truncate px-4">${s.name.toUpperCase()}</h5>
+                        <span class="text-[10px] font-mono text-gray-400 font-bold">NODE ID: ${s.markerId}</span>
+                    </div>
+                </div>`).join('');
+        }
+
         // ==========================================
-        // 🚀 LIVE ENGINE RUNNER ARENA STREAM FLOOD
+        // 🚀 LIVE RUNNER ARENA FLOW STACK
         // ==========================================
         async function launchQuizEvaluationRunner(quizId, quizTitle) {
-            if (!activeClassNodeId) { alert("Please select a Class Node before running an evaluation session."); return; }
-            const currentClassRecord = await db.classes.get(activeClassNodeId);
-            
+            globalScannerOperationMode = "quiz";
+            setupArenaUIForMode();
             activeQuizFolderId = quizId;
             activeQuestionsArray = await db.questions.where('quizId').equals(quizId).toArray();
             questionCursorIndex = 0;
-            
-            document.getElementById('p1-class-node-indicator').innerText = `CLASS: ${currentClassRecord ? currentClassRecord.title.toUpperCase() : 'UNKNOWN'}`;
-            document.getElementById('active-scanning-node-badge').innerText = `📡 LIVE DECODING CLASS: ${activeClassNodeId}`;
-            
             const targetEl = document.getElementById('play-tab');
             if (targetEl.requestFullscreen) { targetEl.requestFullscreen(); } 
             else if (targetEl.webkitRequestFullscreen) { targetEl.webkitRequestFullscreen(); }
-            
             switchTab('play-tab');
             initializeQuestionPhase1View();
             initializeCameraHardwareDecoderStream();
+        }
+
+        // 📅 ATTENDANCE LAUNCH SEQUENCES
+        function startLiveAttendanceScanning() {
+            const dateVal = document.getElementById('attendance-session-date').value;
+            if(!dateVal) { alert("Please pick a valid session date before rolling call."); return; }
+            
+            globalScannerOperationMode = "attendance";
+            setupArenaUIForMode();
+            
+            questionLoggedIdsSet.clear();
+            document.getElementById('p2-log-stream').innerHTML = '<span class="text-slate-500 italic">No attendance records ingested yet...</span>';
+            document.getElementById('p2-live-counter').innerText = "0 Checked In";
+            
+            const targetEl = document.getElementById('play-tab');
+            if (targetEl.requestFullscreen) { targetEl.requestFullscreen(); }
+            switchTab('play-tab');
+            
+            // Bypass Phase 1 configuration entirely for direct attendance access
+            document.getElementById('arena-phase-1').classList.add('hidden');
+            document.getElementById('arena-phase-2').classList.remove('hidden');
+            document.getElementById('arena-phase-3').classList.add('hidden');
+            
+            armScannerEngineChannel(true);
+            initializeCameraHardwareDecoderStream();
+        }
+
+        function setupArenaUIForMode() {
+            if(globalScannerOperationMode === "attendance") {
+                document.getElementById('panel-log-title').innerText = "ATTENDANCE INGESTION PACKETS";
+                document.getElementById('live-scanner-banner-alert').innerText = "📡 LIVE ATTENDANCE LOGGING ACTIVE";
+                document.getElementById('scanner-finish-action-btn').innerText = "⏹ CONCLUDE ATTENDANCE";
+                document.getElementById('scanner-finish-action-btn').onclick = function() {
+                    armScannerEngineChannel(false);
+                    exitFullscreenQuizArena();
+                    switchTab('attendance-tab');
+                };
+            } else {
+                document.getElementById('panel-log-title').innerText = "INCOMING LOGS";
+                document.getElementById('live-scanner-banner-alert').innerText = "📡 LIVE ENGINE DECODING SCANNER";
+                document.getElementById('scanner-finish-action-btn').innerText = "⏹ FINISH SCANNING";
+                document.getElementById('scanner-finish-action-btn').onclick = transitionToPhase3;
+            }
         }
 
         function exitFullscreenQuizArena() {
             if (document.exitFullscreen) document.exitFullscreen();
             else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
             armScannerEngineChannel(false);
-            switchTab('quiz-tab');
+            if(globalScannerOperationMode === "attendance") {
+                switchTab('attendance-tab');
+            } else {
+                switchTab('quiz-tab');
+            }
         }
 
         function initializeQuestionPhase1View() {
             armScannerEngineChannel(false);
             questionLoggedIdsSet.clear();
             questionAnswersBufferMap = {};
-            document.getElementById('p2-log-stream').innerHTML = '<span class="text-slate-500 italic">No active signatures decoded yet...</span>';
+            document.getElementById('p2-log-stream').innerHTML = '<span class="text-slate-500 italic">No markers read yet...</span>';
             document.getElementById('p2-live-counter').innerText = "0 Responses Ingested";
             document.getElementById('arena-phase-1').classList.remove('hidden');
             document.getElementById('arena-phase-2').classList.add('hidden');
@@ -671,7 +659,7 @@
             document.getElementById('arena-phase-3').classList.remove('hidden');
 
             if(questionLoggedIdsSet.size === 0) {
-                document.getElementById('p3-analytics-bars-box').innerHTML = '<div class="text-slate-400 text-center italic text-sm py-8">Zero analytical data recorded during frame cycle.</div>';
+                document.getElementById('p3-analytics-bars-box').innerHTML = '<div class="text-slate-400 text-center italic text-sm py-8">Zero responses recorded.</div>';
                 return;
             }
 
@@ -683,16 +671,10 @@
                 let letter = questionAnswersBufferMap[id];
                 if(tallies[letter] !== undefined) tallies[letter]++;
                 if(letter === currentQ.correctAnswer) {
-                    // Match directly using our composite unique roster tracking structure inside the Class Node
-                    const matches = await db.roster.where({ classId: activeClassNodeId, markerId: parseInt(id) }).toArray();
-                    if(matches.length > 0) {
-                        const profile = matches[0];
-                        let scoreObj = await db.scores.where({ classId: activeClassNodeId, studentName: profile.name }).first();
-                        if (!scoreObj) {
-                            scoreObj = { classId: activeClassNodeId, studentName: profile.name, score: 0 };
-                        }
-                        scoreObj.score += 1; 
-                        await db.scores.put(scoreObj);
+                    const profile = await db.roster.get(parseInt(id));
+                    if(profile) {
+                        let scoreObj = await db.scores.get(profile.name) || { studentName: profile.name, score: 0 };
+                        scoreObj.score += 1; await db.scores.put(scoreObj);
                     }
                 }
             }
@@ -712,6 +694,7 @@
                     const percent = Math.round((tallies[letter] / total) * 100) || 0;
                     const isCorrect = letter === currentQ.correctAnswer;
                     const choiceText = currentQ[`choice${letter}`] || ''; 
+                    
                     return `
                         <div class="text-xs font-semibold mb-3">
                             <div class="flex justify-between text-slate-300 mb-1">
@@ -732,79 +715,130 @@
                 questionCursorIndex++;
                 initializeQuestionPhase1View();
             } else {
-                alert("Evaluation matrix completed successfully.");
+                alert("Final question reached.");
                 exitFullscreenQuizArena();
                 switchTab('summary-tab');
             }
         }
 
         // ==========================================
-        // 📷 ISOLATED COMPUTER VISION DECODING
+        // 📷 COMPUTER VISION DECODING CORE LOOP
         // ==========================================
         function parsePixelMatrixBufferTelemetry(ctxFrame, w, h) {
             if(!isScannerArmed || isTryScanRunning) return;
+            
             if (!arucoEngineDetector) {
-                if (typeof AR !== 'undefined') { arucoEngineDetector = new AR.Detector({ dictionaryName: 'ARUCO' }); } 
-                else { return; }
+                if (typeof AR !== 'undefined') {
+                    arucoEngineDetector = new AR.Detector({ dictionaryName: 'ARUCO' });
+                } else {
+                    return; 
+                }
             }
+
             const imgData = ctxFrame.getImageData(0, 0, w, h);
             const detectedMarkers = arucoEngineDetector.detect(imgData);
+
             for (let i = 0; i < detectedMarkers.length; i++) {
-                const marker = detectedMarkers[i]; const markerId = marker.id; const corners = marker.corners; 
-                
-                // 🔒 CRISIS SOLVED: Query matches ONLY within the currently active Class Node
-                db.roster.where({ classId: activeClassNodeId, markerId: markerId }).toArray().then(matches => {
-                    if (matches.length > 0 && !questionLoggedIdsSet.has(markerId)) {
-                        const profile = matches[0];
-                        const topEdgeY    = (corners[0].y + corners[1].y) / 2;
-                        const rightEdgeY  = (corners[1].y + corners[2].y) / 2;
-                        const bottomEdgeY = (corners[2].y + corners[3].y) / 2;
-                        const leftEdgeY   = (corners[3].y + corners[0].y) / 2;
+                const marker = detectedMarkers[i];
+                const markerId = marker.id;
+                const corners = marker.corners; 
+
+                db.roster.get(markerId).then(profile => {
+                    if (profile && !questionLoggedIdsSet.has(markerId)) {
                         
-                        let mappedAnswer = "A"; let lowestObservedPixelY = topEdgeY;
-                        if (rightEdgeY < lowestObservedPixelY) { mappedAnswer = "B"; lowestObservedPixelY = rightEdgeY; }
-                        if (bottomEdgeY < lowestObservedPixelY) { mappedAnswer = "C"; lowestObservedPixelY = bottomEdgeY; }
-                        if (leftEdgeY < lowestObservedPixelY) { mappedAnswer = "D"; lowestObservedPixelY = leftEdgeY; }
-                        
-                        registerScannedAnswerTelemetryPacket(profile, markerId, mappedAnswer);
+                        if(globalScannerOperationMode === "attendance") {
+                            // Orientation tracking is not necessary for pure attendance verification
+                            registerAttendanceLogEntry(markerId);
+                        } else {
+                            const topEdgeY    = (corners[0].y + corners[1].y) / 2;
+                            const rightEdgeY  = (corners[1].y + corners[2].y) / 2;
+                            const bottomEdgeY = (corners[2].y + corners[3].y) / 2;
+                            const leftEdgeY   = (corners[3].y + corners[0].y) / 2;
+
+                            let mappedAnswer = "A";
+                            let lowestObservedPixelY = topEdgeY;
+
+                            if (rightEdgeY < lowestObservedPixelY) { mappedAnswer = "B"; lowestObservedPixelY = rightEdgeY; }
+                            if (bottomEdgeY < lowestObservedPixelY) { mappedAnswer = "C"; lowestObservedPixelY = bottomEdgeY; }
+                            if (leftEdgeY < lowestObservedPixelY) { mappedAnswer = "D"; lowestObservedPixelY = leftEdgeY; }
+
+                            registerScannedAnswerTelemetryPacket(markerId, mappedAnswer);
+                        }
                     }
                 });
             }
         }
 
-        async function registerScannedAnswerTelemetryPacket(profile, markerId, orientationLetterCode) {
+        async function registerScannedAnswerTelemetryPacket(markerId, orientationLetterCode) {
             if(!isScannerArmed) return;
             if(questionLoggedIdsSet.has(markerId)) return;
-            
+            const profile = await db.roster.get(markerId); if(!profile) return;
+
             questionLoggedIdsSet.add(markerId);
             questionAnswersBufferMap[markerId] = orientationLetterCode;
-            
+
             const log = document.getElementById('p2-log-stream');
-            if(log.innerText.includes("No active data") || log.innerText.includes("No markers read")) log.innerHTML = '';
+            if(log.innerText.includes("No active data")) log.innerHTML = '';
+
             log.innerHTML = `
                 <div class="bg-slate-900 p-2 border border-slate-800 rounded-lg flex justify-between items-center font-semibold text-slate-200 fade-in-item">
                     <span>✓ ${profile.name}</span>
                     <span class="bg-indigo-950 text-indigo-400 font-mono font-bold px-1.5 py-0.5 rounded text-[10px]">Rotated: ${orientationLetterCode}</span>
                 </div>` + log.innerHTML;
+
             document.getElementById('p2-live-counter').innerText = `${questionLoggedIdsSet.size} Responses Ingested`;
+        }
+
+        // 📅 DEDICATED DATABASE ATTENDANCE LOGGER ENGINE
+        async function registerAttendanceLogEntry(markerId) {
+            if(!isScannerArmed) return;
+            if(questionLoggedIdsSet.has(markerId)) return;
+            
+            const profile = await db.roster.get(markerId);
+            if(!profile) return;
+
+            const targetDate = document.getElementById('attendance-session-date').value;
+            questionLoggedIdsSet.add(markerId);
+
+            try {
+                // Atomic upsert to avoid key violations
+                await db.attendance.put({ date: targetDate, markerId: markerId });
+            } catch(e) {
+                console.log("Upsert ignored, entry already processed.");
+            }
+
+            const log = document.getElementById('p2-log-stream');
+            if(log.innerText.includes("No attendance records")) log.innerHTML = '';
+
+            log.innerHTML = `
+                <div class="bg-slate-900 p-2 border border-slate-800 rounded-lg flex justify-between items-center font-semibold text-teal-400 fade-in-item">
+                    <span>📅 PRESENT: ${profile.name}</span>
+                    <span class="bg-teal-950 text-teal-300 font-mono font-bold px-1.5 py-0.5 rounded text-[10px]">ID: ${markerId} Verified</span>
+                </div>` + log.innerHTML;
+
+            document.getElementById('p2-live-counter').innerText = `${questionLoggedIdsSet.size} Checked In`;
         }
 
         async function toggleTryScanEngine() {
             const btn = document.getElementById('ctrl-try-scan');
             if(isTryScanRunning) {
                 isTryScanRunning = false; clearInterval(tryScanTimerInterval);
-                btn.innerText = "🔬 TRY SCAN (SIMULATOR)"; btn.className = "bg-cyan-600/90 text-white px-3 py-1.5 text-xs font-bold rounded-full shadow backdrop-blur-md hover:bg-cyan-500";
+                btn.innerText = "🔬 TRY SCAN (SIMULATOR)"; btn.className = "bg-cyan-600/90 text-white px-3 py-1.5 text-xs font-bold rounded-full hover:bg-cyan-500";
             } else {
-                if (!activeClassNodeId) { alert("Please establish a Class Node context channel."); return; }
-                const rosterList = await db.roster.where('classId').equals(activeClassNodeId).toArray();
-                if(rosterList.length === 0) { alert("Please seed current class student profiles first."); return; }
+                const rosterList = await db.roster.toArray();
+                if(rosterList.length === 0) { alert("Please seed student profiles first."); return; }
                 isTryScanRunning = true; btn.innerText = "🛑 STOP SIMULATOR"; btn.className = "bg-red-500 text-white px-3 py-1.5 text-xs font-bold rounded-full animate-pulse";
                 tryScanTimerInterval = setInterval(() => {
                     const remaining = rosterList.filter(s => !questionLoggedIdsSet.has(s.markerId));
                     if(remaining.length === 0) { clearInterval(tryScanTimerInterval); toggleTryScanEngine(); return; }
                     const target = remaining[Math.floor(Math.random() * remaining.length)];
-                    const choices = ["A", "B", "C", "D"]; 
-                    registerScannedAnswerTelemetryPacket(target, target.markerId, choices[Math.floor(Math.random() * 4)]);
+                    
+                    if(globalScannerOperationMode === "attendance") {
+                        registerAttendanceLogEntry(target.markerId);
+                    } else {
+                        const choices = ["A", "B", "C", "D"]; 
+                        registerScannedAnswerTelemetryPacket(target.markerId, choices[Math.floor(Math.random() * 4)]);
+                    }
                 }, 1000);
             }
         }
@@ -812,11 +846,9 @@
         function toggleCameraMirrorFlip() { isCameraCanvasMirrored = !isCameraCanvasMirrored; }
 
         async function displayMasterLeaderboard() {
-            if (!activeClassNodeId) return;
-            const container = document.getElementById('master-leaderboard-view'); 
-            const scoresList = await db.scores.where('classId').equals(activeClassNodeId).toArray();
+            const container = document.getElementById('master-leaderboard-view'); const scoresList = await db.scores.toArray();
             const ranked = scoresList.sort((x, y) => y.score - x.score);
-            if(ranked.length === 0) { container.innerHTML = `<div class="text-xs text-gray-400 italic text-center p-8 bg-slate-50 border border-dashed rounded-xl">No scoreboard records created inside this class.</div>`; return; }
+            if(ranked.length === 0) { container.innerHTML = `<div class="text-xs text-gray-400 italic text-center p-8 bg-slate-50 border border-dashed rounded-xl">No leaderboard data found yet.</div>`; return; }
             container.innerHTML = ranked.map((record, index) => `
                 <div class="p-3 bg-white border border-slate-200 rounded-xl flex justify-between items-center text-xs shadow-xs max-w-sm mx-auto font-medium mb-1.5 fade-in-item">
                     <div class="flex items-center gap-2"><span class="font-extrabold text-slate-400 text-sm">#${index + 1}</span><span class="text-slate-800 font-bold text-sm">${record.studentName}</span></div>
@@ -824,11 +856,81 @@
                 </div>`).join('');
         }
 
-        async function purgeLeaderboardMetrics() { 
-            if(confirm("Wipe leaderboard statistics for the active Class Node?")) { 
-                await db.scores.where('classId').equals(activeClassNodeId).delete(); 
-                displayMasterLeaderboard(); 
-            } 
+        async function purgeLeaderboardMetrics() { if(confirm("Clear standings?")) { await db.scores.clear(); displayMasterLeaderboard(); } }
+
+        // ==========================================
+        // 📅 ATTENDANCE MATRIX RENDER SHEET ENGINE
+        // ==========================================
+        async function renderAttendanceMatrixSheet() {
+            const matrixTable = document.getElementById('attendance-reporting-matrix');
+            const targetMonthStr = document.getElementById('attendance-month-filter').value; // Formatted format: "YYYY-MM"
+            if(!targetMonthStr) return;
+
+            const [year, month] = targetMonthStr.split('-').map(Number);
+            const totalDaysInMonth = new Date(year, month, 0).getDate();
+            
+            const students = await db.roster.orderBy('name').toArray();
+            const rawAttendanceData = await db.attendance.where('date').between(`${targetMonthStr}-01`, `${targetMonthStr}-32`, true, true).toArray();
+
+            // Structure data mapping for high efficiency lookups: { "date": { markerId: true } }
+            const attendanceMap = {};
+            rawAttendanceData.forEach(rec => {
+                if(!attendanceMap[rec.date]) attendanceMap[rec.date] = {};
+                attendanceMap[rec.date][rec.markerId] = true;
+            });
+
+            if(students.length === 0) {
+                matrixTable.innerHTML = `<tbody><tr><td class="p-4 text-center text-gray-400 italic">No student profiles initialized yet. Populate your Group Roster.</td></tr></tbody>`;
+                return;
+            }
+
+            // Build Matrix Table Header Columns
+            let headerHTML = `<thead><tr class="bg-slate-100 text-slate-700 uppercase tracking-wider text-[10px] font-bold border-b">`;
+            headerHTML += `<th class="p-3 border-r sticky left-0 bg-slate-100 z-10 w-48">Student Name</th>`;
+            headerHTML += `<th class="p-3 border-r text-center w-12">ID</th>`;
+            for(let d = 1; d <= totalDaysInMonth; d++) {
+                headerHTML += `<th class="p-1 border-r text-center font-mono w-8">${d}</th>`;
+            }
+            headerHTML += `</tr></thead>`;
+
+            // Build Matrix Body Rows
+            let bodyHTML = `<tbody>`;
+            students.forEach(st => {
+                bodyHTML += `<tr class="border-b hover:bg-slate-50 transition">`;
+                bodyHTML += `<td class="p-3 border-r font-bold text-gray-900 sticky left-0 bg-white group-hover:bg-slate-50 truncate max-w-[12rem]">${st.name.toUpperCase()}</td>`;
+                bodyHTML += `<td class="p-3 border-r font-mono text-center text-gray-400">${st.markerId}</td>`;
+                
+                for(let d = 1; d <= totalDaysInMonth; d++) {
+                    const padDay = d.toString().padStart(2, '0');
+                    const lookupKey = `${targetMonthStr}-${padDay}`;
+                    const isPresent = attendanceMap[lookupKey] && attendanceMap[lookupKey][st.markerId];
+                    
+                    if(isPresent) {
+                        bodyHTML += `<td class="p-1 border-r text-center text-emerald-600 font-extrabold text-sm bg-emerald-50/40">✓</td>`;
+                    } else {
+                        bodyHTML += `<td class="p-1 border-r text-center text-gray-200 font-light">-</td>`;
+                    }
+                }
+                bodyHTML += `</tr>`;
+            });
+            bodyHTML += `</tbody>`;
+
+            matrixTable.innerHTML = headerHTML + bodyHTML;
+        }
+
+        function exportAttendanceToExcel() {
+            const tableElement = document.getElementById('attendance-reporting-matrix');
+            const selectedMonth = document.getElementById('attendance-month-filter').value;
+            
+            const workbook = XLSX.utils.table_to_book(tableElement, { sheet: "Attendance Sheet" });
+            XLSX.writeFile(workbook, `Classroom_Attendance_${selectedMonth}.xlsx`);
+        }
+
+        async function clearAllAttendanceRecords() {
+            if(confirm("Are you absolutely certain you want to wipe clean all history matrix entries?")) {
+                await db.attendance.clear();
+                renderAttendanceMatrixSheet();
+            }
         }
 
         async function initializeCameraHardwareDecoderStream() {
@@ -840,22 +942,35 @@
                 function frameRenderProcessingLoop() {
                     if (video.readyState === video.HAVE_ENOUGH_DATA) {
                         if(viewCanvas.width !== video.videoWidth) { viewCanvas.width = video.videoWidth; viewCanvas.height = video.videoHeight; }
+                        
                         ctx.drawImage(video, 0, 0, viewCanvas.width, viewCanvas.height);
                         parsePixelMatrixBufferTelemetry(ctx, viewCanvas.width, viewCanvas.height);
+                        
                         if(isCameraCanvasMirrored) { 
-                            ctx.save(); ctx.clearRect(0, 0, viewCanvas.width, viewCanvas.height); ctx.translate(viewCanvas.width, 0); ctx.scale(-1, 1); ctx.drawImage(video, 0, 0, viewCanvas.width, viewCanvas.height); ctx.restore();
+                            ctx.save();
+                            ctx.clearRect(0, 0, viewCanvas.width, viewCanvas.height);
+                            ctx.translate(viewCanvas.width, 0); 
+                            ctx.scale(-1, 1); 
+                            ctx.drawImage(video, 0, 0, viewCanvas.width, viewCanvas.height); 
+                            ctx.restore();
                         }
                     }
                     requestAnimationFrame(frameRenderProcessingLoop);
                 }
                 requestAnimationFrame(frameRenderProcessingLoop);
-            } catch (err) { console.warn("Camera pipeline capture access warning: " + err); }
+            } catch (err) { console.warn("Camera load warning: " + err); }
         }
 
-        // 🚀 INSTANT DIRECT RUNTIME INITIALIZATION
-        // Execution triggers immediately during browser parse phases without DomContentLoaded traps.
-        syncClassDropdownInterface().then(() => {
-            loadRosterCards();
+        window.addEventListener('DOMContentLoaded', () => { 
+            // Set input date default values to current local timestamps
+            const currentLocalDateString = new Date().toISOString().split('T')[0];
+            document.getElementById('attendance-session-date').value = currentLocalDateString;
+            document.getElementById('attendance-month-filter').value = currentLocalDateString.substring(0, 7);
+
+            syncFolderDropdowns(); 
+            loadQuizDirectory(); 
+            loadRosterCards(); 
+            renderAttendanceMatrixSheet();
         });
     </script>
 </body>
