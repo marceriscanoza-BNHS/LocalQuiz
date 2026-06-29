@@ -87,7 +87,7 @@
                         <label class="block text-[10px] text-slate-400 font-bold uppercase mb-0.5">Create New Node</label>
                         <input type="text" id="new-class-node-title" placeholder="e.g., Grade 10 - Section A" class="w-full sm:w-48 bg-slate-800 border border-slate-700 text-white rounded-lg p-2 text-xs">
                     </div>
-                    <button onclick="createNewClassNode()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2 rounded-lg h-9 transition">Initialize Class Node</button>
+                    <button onclick="createNewClassNode()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-50 text-white font-bold text-xs px-4 py-2 rounded-lg h-9 transition">Initialize Class Node</button>
                 </div>
             </div>
 
@@ -107,7 +107,7 @@
                     <h3 class="font-bold text-xs uppercase tracking-wider text-slate-600 mb-1">Bulk Upload Profiles (.csv / .xlsx)</h3>
                     <p class="text-[11px] text-gray-400 mb-3 leading-relaxed">Headers required exactly: <code class="bg-gray-200 px-1 py-0.5 rounded text-slate-700 font-mono font-bold">Name</code> and <code class="bg-gray-200 px-1 py-0.5 rounded text-slate-700 font-mono font-bold">ID</code> (IDs map from 0 to 999).</p>
                     <div class="space-y-2">
-                        <input type="file" id="roster-file-input" accept=".csv, .xlsx, .xls" class="block w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
+                        <input type="file" id="roster-file-input" accept=".csv, .xlsx, .xls" class="block w-full text-xs text-slate-700 bg-white border rounded-lg p-2 cursor-pointer z-10 relative">
                         <button onclick="processRosterUpload()" class="w-full bg-indigo-600 text-white py-2 text-xs rounded-lg font-bold hover:bg-indigo-700 transition shadow-sm">Import into Active Class</button>
                     </div>
                 </div>
@@ -144,7 +144,7 @@
                         <p class="text-[11px] text-gray-400 mb-2">Required file headers: <code class="bg-gray-200 px-0.5 rounded text-slate-700 font-mono">Question</code>, <code class="bg-gray-200 px-0.5 rounded text-slate-700 font-mono">A</code>, <code class="bg-gray-200 px-0.5 rounded text-slate-700 font-mono">B</code>, <code class="bg-gray-200 px-0.5 rounded text-slate-700 font-mono">C</code>, <code class="bg-gray-200 px-0.5 rounded text-slate-700 font-mono">D</code>, <code class="bg-gray-200 px-0.5 rounded text-slate-700 font-mono">Correct Answer</code></p>
                     </div>
                     <select id="bulk-target-folder" class="w-full border p-2 text-xs rounded-lg bg-white mb-2 font-medium text-gray-700 folder-dropdown-sync"></select>
-                    <input type="file" id="questions-file-input" accept=".csv, .xlsx, .xls" class="block w-full text-[10px] text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-[10px] file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                    <input type="file" id="questions-file-input" accept=".csv, .xlsx, .xls" class="block w-full text-xs text-slate-700 bg-white border rounded-lg p-2 cursor-pointer z-10 relative">
                     <button onclick="processQuestionsUpload()" class="w-full bg-indigo-600 text-white py-2 text-xs rounded-lg font-bold hover:bg-indigo-700 transition mt-2">Parse Questions File</button>
                 </div>
 
@@ -404,24 +404,37 @@
             if(!input.files.length) { alert("Please select a valid Roster spreadsheet asset."); return; }
             const file = input.files[0];
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = async function(e) {
                 try {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, {type: 'array'});
                     const jsonRows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-                    db.transaction('rw', db.roster, async () => {
-                        for(let row of jsonRows) {
-                            const nameVal = extractObjectValueByNormalizedKey(row, 'name') || extractObjectValueByNormalizedKey(row, 'studentname');
-                            const idVal = extractObjectValueByNormalizedKey(row, 'id') || extractObjectValueByNormalizedKey(row, 'markerid');
-                            const markerId = parseInt(idVal);
-                            if(nameVal && !isNaN(markerId) && markerId >= 0 && markerId <= 999) {
-                                // Add specifically to the active class partition context boundary
-                                await db.roster.add({ classId: activeClassNodeId, markerId: markerId, name: nameVal.toString().trim() });
-                            }
+                    
+                    const rowsToAdd = [];
+                    for(let row of jsonRows) {
+                        const nameVal = extractObjectValueByNormalizedKey(row, 'name') || extractObjectValueByNormalizedKey(row, 'studentname');
+                        const idVal = extractObjectValueByNormalizedKey(row, 'id') || extractObjectValueByNormalizedKey(row, 'markerid');
+                        const markerId = parseInt(idVal);
+                        if(nameVal && !isNaN(markerId) && markerId >= 0 && markerId <= 999) {
+                            rowsToAdd.push({ 
+                                classId: activeClassNodeId, 
+                                markerId: markerId, 
+                                name: nameVal.toString().trim() 
+                            });
                         }
-                    }).then(() => { input.value = ''; loadRosterCards(); alert("Roster imported cleanly into active class context."); })
-                    .catch(err => alert("Database transaction failure: " + err.message));
-                } catch(err) { alert("Failed to process spreadsheet file data matrix: " + err.message); }
+                    }
+                    
+                    if (rowsToAdd.length > 0) {
+                        await db.roster.bulkAdd(rowsToAdd);
+                        input.value = ''; 
+                        loadRosterCards(); 
+                        alert(`Successfully imported ${rowsToAdd.length} profiles into the active class context.`);
+                    } else {
+                        alert("No valid rows matched the requested criteria ('Name' and 'ID' columns).");
+                    }
+                } catch(err) { 
+                    alert("Failed to process spreadsheet file data matrix: " + err.message); 
+                }
             };
             reader.readAsArrayBuffer(file);
         }
@@ -445,7 +458,6 @@
             try {
                 if (!activeClassNodeId) await syncClassDropdownInterface();
                 const container = document.getElementById('print-area'); 
-                // Only load roster entries matched to the active isolated class node boundary
                 const list = await db.roster.where('classId').equals(activeClassNodeId).toArray();
                 
                 if(list.length === 0) { 
@@ -500,29 +512,46 @@
             if(!folderId || !input.files.length) { alert("Choose a folder track destination and link a valid processing asset."); return; }
             const file = input.files[0];
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = async function(e) {
                 try {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, {type: 'array'});
                     const jsonRows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-                    db.transaction('rw', db.questions, async () => {
-                        for(let row of jsonRows) {
-                            const question = extractObjectValueByNormalizedKey(row, 'question') || extractObjectValueByNormalizedKey(row, 'questiontext');
-                            const a = extractObjectValueByNormalizedKey(row, 'a') || extractObjectValueByNormalizedKey(row, 'choicea');
-                            const b = extractObjectValueByNormalizedKey(row, 'b') || extractObjectValueByNormalizedKey(row, 'choiceb');
-                            const c = extractObjectValueByNormalizedKey(row, 'c') || extractObjectValueByNormalizedKey(row, 'choicec');
-                            const d = extractObjectValueByNormalizedKey(row, 'd') || extractObjectValueByNormalizedKey(row, 'choiced');
-                            let correct = extractObjectValueByNormalizedKey(row, 'correctanswer') || extractObjectValueByNormalizedKey(row, 'correct') || "";
-                            correct = correct.toString().trim().toUpperCase();
-                            if(question && a && b && c && d && ["A","B","C","D"].includes(correct)) {
-                                await db.questions.add({
-                                    quizId: folderId, question: question.toString().trim(), choiceA: a.toString().trim(), choiceB: b.toString().trim(), choiceC: c.toString().trim(), choiceD: d.toString().trim(), correctAnswer: correct
-                                });
-                            }
+                    
+                    const questionsToAdd = [];
+                    for(let row of jsonRows) {
+                        const question = extractObjectValueByNormalizedKey(row, 'question') || extractObjectValueByNormalizedKey(row, 'questiontext');
+                        const a = extractObjectValueByNormalizedKey(row, 'a') || extractObjectValueByNormalizedKey(row, 'choicea');
+                        const b = extractObjectValueByNormalizedKey(row, 'b') || extractObjectValueByNormalizedKey(row, 'choiceb');
+                        const c = extractObjectValueByNormalizedKey(row, 'c') || extractObjectValueByNormalizedKey(row, 'choicec');
+                        const d = extractObjectValueByNormalizedKey(row, 'd') || extractObjectValueByNormalizedKey(row, 'choiced');
+                        let correct = extractObjectValueByNormalizedKey(row, 'correctanswer') || extractObjectValueByNormalizedKey(row, 'correct') || "";
+                        correct = correct.toString().trim().toUpperCase();
+                        
+                        if(question && a && b && c && d && ["A","B","C","D"].includes(correct)) {
+                            questionsToAdd.push({
+                                quizId: folderId, 
+                                question: question.toString().trim(), 
+                                choiceA: a.toString().trim(), 
+                                choiceB: b.toString().trim(), 
+                                choiceC: c.toString().trim(), 
+                                choiceD: d.toString().trim(), 
+                                correctAnswer: correct
+                            });
                         }
-                    }).then(() => { input.value = ''; loadQuizDirectory(); alert("Quiz bank entries uploaded safely."); })
-                    .catch(err => alert("Failed writing to local database nodes: " + err.message));
-                } catch(err) { alert("File schema parsing logic failure: " + err.message); }
+                    }
+                    
+                    if (questionsToAdd.length > 0) {
+                        await db.questions.bulkAdd(questionsToAdd);
+                        input.value = ''; 
+                        loadQuizDirectory(); 
+                        alert(`Successfully uploaded ${questionsToAdd.length} quiz bank entries.`);
+                    } else {
+                        alert("No valid questions found. Ensure columns match: Question, A, B, C, D, Correct Answer");
+                    }
+                } catch(err) { 
+                    alert("File schema parsing logic failure: " + err.message); 
+                }
             };
             reader.readAsArrayBuffer(file);
         }
@@ -577,7 +606,6 @@
             const monthSet = new Set();
             items.forEach(i => monthSet.add(i.monthString));
             
-            // Generate standard placeholder for current active tracking date if database records are dry
             const currentObj = new Date();
             const currentMonthStr = currentObj.toLocaleString('default', { month: 'long', year: 'numeric' });
             monthSet.add(currentMonthStr);
@@ -918,7 +946,6 @@
                 let letter = questionAnswersBufferMap[id];
                 if(tallies[letter] !== undefined) tallies[letter]++;
                 if(letter === currentQ.correctAnswer) {
-                    // Match directly using our composite unique roster tracking structure inside the Class Node
                     const matches = await db.roster.where({ classId: activeClassNodeId, markerId: parseInt(id) }).toArray();
                     if(matches.length > 0) {
                         const profile = matches[0];
@@ -987,7 +1014,6 @@
             for (let i = 0; i < detectedMarkers.length; i++) {
                 const marker = detectedMarkers[i]; const markerId = marker.id; const corners = marker.corners; 
                 
-                // 🔒 CRISIS SOLVED: Query matches ONLY within the currently active Class Node
                 db.roster.where({ classId: activeClassNodeId, markerId: markerId }).toArray().then(matches => {
                     if (matches.length > 0 && !questionLoggedIdsSet.has(markerId)) {
                         const profile = matches[0];
@@ -1109,8 +1135,6 @@
             } catch (err) { console.warn("Camera pipeline capture access warning: " + err); }
         }
 
-        // 🚀 INSTANT DIRECT RUNTIME INITIALIZATION
-        // Execution triggers immediately during browser parse phases without DomContentLoaded traps.
         syncClassDropdownInterface().then(() => {
             loadRosterCards();
         });
